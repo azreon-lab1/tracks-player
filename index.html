@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Audio Platform</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #f5f5f5; min-height: 100vh; }
+    .container { max-width: 520px; margin: 0 auto; padding: 24px 16px; }
+    h1 { font-size: 1.4rem; color: #222; margin-bottom: 24px; }
+    .card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,.08); margin-bottom: 16px; }
+    input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; margin: 8px 0; }
+    button { width: 100%; padding: 14px; background: #1A4F8A; color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-top: 8px; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .msg { font-size: .9rem; color: #c00; margin-top: 8px; min-height: 20px; }
+    .msg.ok { color: #1A6B3A; }
+    .track-list { margin-top: 8px; }
+    .track-item { padding: 14px; border-bottom: 1px solid #eee; cursor: pointer; border-radius: 8px; }
+    .track-item:hover, .track-item.active { background: #f0f4ff; }
+    .track-title { font-weight: 600; color: #222; }
+    .track-duration { font-size: .85rem; color: #888; margin-top: 4px; }
+    audio { width: 100%; margin-top: 16px; }
+    #player-section { display: none; }
+    #otp-section { display: none; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Step 1: Email -->
+  <div id="auth-section" class="card">
+    <h1>Audio Platform</h1>
+    <p style="color:#555;margin-bottom:8px">Enter your email to receive an access code.</p>
+    <input type="email" id="email-input" placeholder="your@email.com">
+    <button id="send-btn">Send Code</button>
+    <div class="msg" id="auth-msg"></div>
+  </div>
+
+  <!-- Step 2: OTP -->
+  <div id="otp-section" class="card">
+    <h1>Enter Your Code</h1>
+    <p style="color:#555;margin-bottom:8px">Check your email for the 6-digit code.</p>
+    <input type="text" id="otp-input" placeholder="000000" maxlength="6" inputmode="numeric">
+    <button id="verify-btn">Verify</button>
+    <button id="back-btn" style="background:#888;margin-top:8px">Back</button>
+    <div class="msg" id="otp-msg"></div>
+  </div>
+
+  <!-- Player -->
+  <div id="player-section">
+    <div class="card">
+      <h1 id="now-playing">Select a track below</h1>
+      <audio id="player" controls preload="metadata" controlsList="nodownload"></audio>
+    </div>
+    <div class="card">
+      <div class="track-list" id="track-list"></div>
+    </div>
+    <button id="logout-btn" style="background:#888;margin-top:8px">Log Out</button>
+  </div>
+
+</div>
+<script>
+  const WORKER = 'https://audio-worker.azreon.workers.dev';
+
+  let token       = localStorage.getItem('ap_token');
+  let currentTrack = null;
+  let sessionId   = newSessionId();
+  let wasPlaying  = false;
+  let heartbeatTimer = null;
+  const HEARTBEAT_MS = 30000;
+
+  const $ = id => document.getElementById(id);
+
+  // ── On load ────────────────────────────────────────────────────────
+  if (token) loadPlayer();
+
+  // ── Send OTP ───────────────────────────────────────────────────────
+  $('send-btn').onclick = async () => {
+    const email = $('email-input').value.trim();
+    $('auth-msg').textContent = '';
+    if (!email) { $('auth-msg').textContent = 'Please enter your email.'; return; }
+    $('send-btn').disabled = true;
+    const data = await post('/auth/send-otp', { email });
+    $('send-btn').disabled = false;
+    if (data.success) {
+      $('auth-section').style.display = 'none';
+      $('otp-section').style.display  = 'block';
+      $('otp-input').focus();
+    } else {
+      $('auth-msg').textContent = data.message;
+    }
+  };
+
+  // ── Verify OTP ─────────────────────────────────────────────────────
+  $('verify-btn').onclick = async () => {
+    const email = $('email-input').value.trim();
+    const code  = $('otp-input').value.trim();
+    $('otp-msg').textContent = '';
+    $('verify-btn').disabled = true;
+    const data = await post('/auth/verify-otp', { email, code });
+    $('verify-btn').disabled = false;
+    if (data.success) {
+      token = data.token;
+      localStorage.setItem('ap_token', token);
+      $('otp-section').style.display = 'none';
+      loadPlayer();
+    } else {
+      $('otp-msg').textContent = data.message;
+    }
+  };
+
+  // ── Back button ─────────────────────────────────────────────────────
+  $('back-btn').onclick = () => {
+    $('otp-section').style.display  = 'none';
+    $('auth-section').style.display = 'block';
+    $('otp-input').value = '';
+    $('otp-msg').textContent = '';
+  };
+
+  // ── Enter key on OTP input ──────────────────────────────────────────
+  $('otp-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') $('verify-btn').click();
+  });
+
+  // ── Load player ─────────────────────────────────────────────────────
+  async function loadPlayer() {
+    const res = await fetch(WORKER + '/tracks', {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    if (res.status === 401) { logout(); return; }
+    const data = await res.json();
+    $('auth-section').style.display  = 'none';
+    $('otp-section').style.display   = 'none';
+    $('player-section').style.display = 'block';
+    const list = $('track-list');
+    list.innerHTML = '';
+    if (!data.tracks || data.tracks.length === 0) {
+      list.innerHTML = '<p style="color:#888;padding:14px">No tracks available.</p>';
+      return;
+    }
+    data.tracks.forEach(track => {
+      const div = document.createElement('div');
+      div.className = 'track-item';
+      div.innerHTML = `<div class="track-title">${track.title}</div>` +
+        (track.duration ? `<div class="track-duration">${track.duration}</div>` : '');
+      div.onclick = () => playTrack(track, div);
+      list.appendChild(div);
+    });
+  }
+
+  // ── Play a track ────────────────────────────────────────────────────
+  function playTrack(track, el) {
+    // Highlight active track
+    document.querySelectorAll('.track-item').forEach(d => d.classList.remove('active'));
+    if (el) el.classList.add('active');
+
+    currentTrack = track;
+    sessionId    = newSessionId();
+    wasPlaying   = false;
+    stopHeartbeat();
+
+    $('now-playing').textContent = track.title;
+    const player = $('player');
+    player.src   = `${WORKER}/audio/${track.r2_key}?t=${encodeURIComponent(token)}`;
+    player.load();
+    player.play().catch(() => {});
+  }
+
+  // ── Logging ─────────────────────────────────────────────────────────
+  const player = $('player');
+
+  function logEvent(type) {
+    if (!currentTrack || !token) return;
+    fetch(WORKER + '/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({
+        clientTimestamp: new Date().toISOString(),
+        trackId:    currentTrack.id,
+        trackTitle: currentTrack.title,
+        eventType:  type,
+        positionMs: Math.round((player.currentTime || 0) * 1000),
+        durationMs: isFinite(player.duration) ? Math.round(player.duration * 1000) : null,
+        sessionId,
+      }),
+    });
+  }
+
+  function startHeartbeat() {
+    stopHeartbeat();
+    heartbeatTimer = setInterval(() => logEvent('heartbeat'), HEARTBEAT_MS);
+  }
+  function stopHeartbeat() {
+    if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+  }
+
+  player.addEventListener('play', () => {
+    logEvent(wasPlaying ? 'resume' : 'start');
+    wasPlaying = true;
+    startHeartbeat();
+  });
+  player.addEventListener('pause',  () => { logEvent('pause'); stopHeartbeat(); });
+  player.addEventListener('ended',  () => { logEvent('end');   stopHeartbeat(); wasPlaying = false; });
+  player.addEventListener('contextmenu', e => e.preventDefault());
+  player.setAttribute('controlsList', 'nodownload');
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') { logEvent('end'); stopHeartbeat(); }
+  });
+
+  // ── Logout ──────────────────────────────────────────────────────────
+  $('logout-btn').onclick = logout;
+  function logout() {
+    localStorage.removeItem('ap_token');
+    token = null;
+    location.reload();
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────
+  function newSessionId() {
+    return Math.random().toString(36).slice(2) + Date.now().toString(36);
+  }
+
+  async function post(path, body) {
+    try {
+      const res = await fetch(WORKER + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      return await res.json();
+    } catch {
+      return { success: false, message: 'Network error. Please try again.' };
+    }
+  }
+</script>
+</body>
+</html>
