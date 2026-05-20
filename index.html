@@ -6,7 +6,7 @@
   <title>Audio Platform</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: sans-serif; background: #725923; min-height: 100vh; }
+    body { font-family: sans-serif; background: #C8962E; min-height: 100vh; }
     .container { max-width: 520px; margin: 0 auto; padding: 24px 16px; }
 
     /* Cards */
@@ -181,16 +181,53 @@
     }
     .track-item:last-child { border-bottom: none; }
     .track-item:hover { background: #f0f4ff; }
-    .track-item.active { background: #c5d4f5; }
+    .track-item.active { background: #e8effe; }
     .track-title { font-weight: 600; color: #222; }
     .track-duration { font-size: .85rem; color: #888; margin-top: 4px; }
 
     #player-section { display: none; }
     #otp-section    { display: none; }
+    #auth-section   { display: none; }
+
+    /* Startup loading screen */
+    #startup-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 60vh;
+      gap: 16px;
+    }
+    .startup-bar {
+      width: 200px;
+      height: 4px;
+      background: rgba(255,255,255,0.3);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .startup-bar::after {
+      content: '';
+      display: block;
+      height: 100%;
+      width: 40%;
+      background: #d4a843;
+      border-radius: 2px;
+      animation: slide 1.2s ease-in-out infinite;
+    }
+    .startup-label {
+      font-size: .85rem;
+      color: rgba(255,255,255,0.7);
+    }
   </style>
 </head>
 <body>
 <div class="container">
+
+  <!-- Startup loading -->
+  <div id="startup-loading">
+    <div class="startup-bar"></div>
+    <div class="startup-label">Loading…</div>
+  </div>
 
   <!-- Email -->
   <div id="auth-section" class="card">
@@ -271,7 +308,12 @@
   const $ = id => document.getElementById(id);
 
   // ── On load ──────────────────────────────────────────────────────────
-  if (token) loadPlayer();
+  if (token) {
+    loadPlayer();
+  } else {
+    $('startup-loading').style.display = 'none';
+    $('auth-section').style.display    = 'block';
+  }
 
   // ── Auth ─────────────────────────────────────────────────────────────
   $('send-btn').onclick = async () => {
@@ -325,9 +367,10 @@
     });
     if (res.status === 401) { logout(); return; }
     const data = await res.json();
-    $('auth-section').style.display   = 'none';
-    $('otp-section').style.display    = 'none';
-    $('player-section').style.display = 'block';
+    $('startup-loading').style.display  = 'none';
+    $('auth-section').style.display     = 'none';
+    $('otp-section').style.display      = 'none';
+    $('player-section').style.display   = 'block';
     const list = $('track-list');
     list.innerHTML = '';
     if (!data.tracks || data.tracks.length === 0) {
@@ -480,6 +523,7 @@
         clientTimestamp: new Date().toISOString(),
         trackId:    currentTrack.id,
         trackTitle: currentTrack.title,
+        trackCode:  currentTrack.track_code ?? null,
         eventType:  type,
         positionMs: Math.round((audio.currentTime || 0) * 1000),
         durationMs: isFinite(audio.duration) ? Math.round(audio.duration * 1000) : null,
