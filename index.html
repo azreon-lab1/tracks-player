@@ -8,104 +8,249 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: sans-serif; background: #f5f5f5; min-height: 100vh; }
     .container { max-width: 520px; margin: 0 auto; padding: 24px 16px; }
-    h1 { font-size: 1.4rem; color: #222; margin-bottom: 24px; }
+
+    /* Cards */
     .card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,.08); margin-bottom: 16px; }
+
+    /* Auth */
+    h1 { font-size: 1.4rem; color: #222; margin-bottom: 16px; text-align: center; }
     input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; margin: 8px 0; }
-    button { width: 100%; padding: 14px; background: #1A4F8A; color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-top: 8px; }
-    button:disabled { opacity: .5; cursor: not-allowed; }
+    button.primary { width: 100%; padding: 14px; background: #1A4F8A; color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-top: 8px; }
+    button.primary:disabled { opacity: .5; cursor: not-allowed; }
+    button.secondary { width: 100%; padding: 14px; background: #888; color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-top: 8px; }
     .msg { font-size: .9rem; color: #c00; margin-top: 8px; min-height: 20px; }
-    .msg.ok { color: #1A6B3A; }
+
+    /* Now playing title */
+    #now-playing {
+      text-align: center;
+      font-size: 1.1rem;
+      color: #222;
+      margin-bottom: 18px;
+    }
+
+    /* ── Custom Player ───────────────────────────── */
+    .player {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Top row: play/pause — time — volume */
+    .player-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Play/Pause button */
+    .btn-play {
+      flex-shrink: 0;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: #1A4F8A;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .15s;
+    }
+    .btn-play:hover { background: #153f6e; }
+    .btn-play svg { fill: #fff; width: 18px; height: 18px; }
+    .btn-play:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* Time display */
+    .player-time {
+      font-size: .85rem;
+      color: #555;
+      white-space: nowrap;
+      min-width: 90px;
+      text-align: center;
+    }
+
+    /* Volume */
+    .volume-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+    }
+    .volume-wrap svg { fill: #555; width: 18px; height: 18px; flex-shrink: 0; }
+    input[type=range].volume-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 72px;
+      height: 4px;
+      border-radius: 2px;
+      background: #ddd;
+      outline: none;
+      margin: 0;
+      padding: 0;
+      border: none;
+      cursor: pointer;
+    }
+    input[type=range].volume-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #1A4F8A;
+      cursor: pointer;
+    }
+    input[type=range].volume-slider::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #1A4F8A;
+      border: none;
+      cursor: pointer;
+    }
+
+    /* Progress bar row */
+    .progress-wrap {
+      position: relative;
+      height: 6px;
+      border-radius: 3px;
+      background: #e8e8e8;
+      cursor: pointer;
+      overflow: hidden;
+    }
+    /* Loaded/buffered — light gold */
+    .progress-buffered {
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      background: #d4a843;
+      border-radius: 3px;
+      width: 0%;
+      transition: width .3s linear;
+      opacity: 0.5;
+    }
+    /* Played — black */
+    .progress-played {
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      background: #111;
+      border-radius: 3px;
+      width: 0%;
+    }
+    /* Thumb dot */
+    .progress-thumb {
+      position: absolute;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #111;
+      left: 0%;
+      transition: left .1s;
+    }
+
+    /* Loading animation overlay */
+    .progress-loading {
+      display: none;
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 40%;
+      background: linear-gradient(90deg, transparent, #d4a843, transparent);
+      animation: shimmer 1.2s ease-in-out infinite;
+    }
+    .progress-loading.active { display: block; }
+    @keyframes shimmer {
+      0%   { transform: translateX(-150%); }
+      100% { transform: translateX(400%); }
+    }
+    .loading-label {
+      display: none;
+      font-size: .78rem;
+      color: #b8892a;
+      text-align: center;
+      margin-top: 4px;
+    }
+    .loading-label.active { display: block; }
 
     /* Track list */
-    .track-item { padding: 14px; border-bottom: 1px solid #eee; cursor: pointer; border-radius: 8px; transition: background .15s; }
+    .track-item {
+      padding: 14px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: background .15s;
+      text-align: center;
+    }
     .track-item:last-child { border-bottom: none; }
     .track-item:hover { background: #f0f4ff; }
     .track-item.active { background: #e8effe; }
     .track-title { font-weight: 600; color: #222; }
     .track-duration { font-size: .85rem; color: #888; margin-top: 4px; }
 
-    /* Player */
-    .player-wrap { position: relative; margin-top: 16px; }
-    audio {
-      width: 100%;
-      /* Fix progress bar contrast — loaded portion lighter, played portion blue */
-      accent-color: #1A4F8A;
-    }
-
-    /* Loading indicator */
-    .loading-bar {
-      display: none;
-      height: 3px;
-      background: #e0e0e0;
-      border-radius: 2px;
-      margin-top: 10px;
-      overflow: hidden;
-    }
-    .loading-bar.active { display: block; }
-    .loading-bar::after {
-      content: '';
-      display: block;
-      height: 100%;
-      width: 40%;
-      background: #1A4F8A;
-      border-radius: 2px;
-      animation: slide 1.2s ease-in-out infinite;
-    }
-    @keyframes slide {
-      0%   { transform: translateX(-100%); }
-      100% { transform: translateX(350%); }
-    }
-    .loading-label {
-      display: none;
-      font-size: .82rem;
-      color: #888;
-      margin-top: 6px;
-      text-align: center;
-    }
-    .loading-label.active { display: block; }
-
     #player-section { display: none; }
-    #otp-section { display: none; }
-    #logout-btn { background: #888; margin-top: 8px; }
+    #otp-section    { display: none; }
   </style>
 </head>
 <body>
 <div class="container">
 
-  <!-- Step 1: Email -->
+  <!-- Email -->
   <div id="auth-section" class="card">
     <h1>Audio Platform</h1>
-    <p style="color:#555;margin-bottom:8px">Enter your email to receive an access code.</p>
+    <p style="color:#555;margin-bottom:8px;text-align:center">Enter your email to receive an access code.</p>
     <input type="email" id="email-input" placeholder="your@email.com">
-    <button id="send-btn">Send Code</button>
+    <button class="primary" id="send-btn">Send Code</button>
     <div class="msg" id="auth-msg"></div>
   </div>
 
-  <!-- Step 2: OTP -->
+  <!-- OTP -->
   <div id="otp-section" class="card">
     <h1>Enter Your Code</h1>
-    <p style="color:#555;margin-bottom:8px">Check your email for the 6-digit code.</p>
+    <p style="color:#555;margin-bottom:8px;text-align:center">Check your email for the 6-digit code.</p>
     <input type="text" id="otp-input" placeholder="000000" maxlength="6" inputmode="numeric">
-    <button id="verify-btn">Verify</button>
-    <button id="back-btn" style="background:#888;margin-top:8px">Back</button>
+    <button class="primary" id="verify-btn">Verify</button>
+    <button class="secondary" id="back-btn">Back</button>
     <div class="msg" id="otp-msg"></div>
   </div>
 
   <!-- Player -->
   <div id="player-section">
     <div class="card">
-      <h1 id="now-playing">Select a track below</h1>
-      <div class="player-wrap">
-        <audio id="player" controls preload="metadata"
-               controlsList="nodownload noplaybackrate"></audio>
-        <div class="loading-bar" id="loading-bar"></div>
+      <div id="now-playing">Select a track below</div>
+
+      <div class="player">
+        <!-- Controls row -->
+        <div class="player-controls">
+          <button class="btn-play" id="btn-play" disabled>
+            <!-- Play icon -->
+            <svg id="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            <!-- Pause icon (hidden) -->
+            <svg id="icon-pause" viewBox="0 0 24 24" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+          </button>
+
+          <span class="player-time" id="player-time">0:00 / 0:00</span>
+
+          <div class="volume-wrap">
+            <!-- Volume icon -->
+            <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+            <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.05" value="1">
+          </div>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="progress-wrap" id="progress-wrap">
+          <div class="progress-buffered" id="progress-buffered"></div>
+          <div class="progress-loading" id="progress-loading"></div>
+          <div class="progress-played"  id="progress-played"></div>
+          <div class="progress-thumb"   id="progress-thumb"></div>
+        </div>
         <div class="loading-label" id="loading-label">Loading…</div>
       </div>
     </div>
+
     <div class="card">
       <div id="track-list"></div>
     </div>
-    <button id="logout-btn">Log Out</button>
+
+    <button class="secondary" id="logout-btn">Log Out</button>
   </div>
 
 </div>
@@ -119,13 +264,16 @@
   let heartbeatTimer = null;
   const HEARTBEAT_MS = 30000;
 
+  // Audio element (hidden — we use custom controls)
+  const audio = new Audio();
+  audio.preload = 'metadata';
+
   const $ = id => document.getElementById(id);
-  const player = $('player');
 
   // ── On load ──────────────────────────────────────────────────────────
   if (token) loadPlayer();
 
-  // ── Send OTP ─────────────────────────────────────────────────────────
+  // ── Auth ─────────────────────────────────────────────────────────────
   $('send-btn').onclick = async () => {
     const email = $('email-input').value.trim();
     $('auth-msg').textContent = '';
@@ -142,7 +290,6 @@
     }
   };
 
-  // ── Verify OTP ────────────────────────────────────────────────────────
   $('verify-btn').onclick = async () => {
     const email = $('email-input').value.trim();
     const code  = $('otp-input').value.trim();
@@ -160,7 +307,6 @@
     }
   };
 
-  // ── Back button ───────────────────────────────────────────────────────
   $('back-btn').onclick = () => {
     $('otp-section').style.display  = 'none';
     $('auth-section').style.display = 'block';
@@ -168,7 +314,6 @@
     $('otp-msg').textContent = '';
   };
 
-  // ── Enter key on OTP input ────────────────────────────────────────────
   $('otp-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') $('verify-btn').click();
   });
@@ -186,7 +331,7 @@
     const list = $('track-list');
     list.innerHTML = '';
     if (!data.tracks || data.tracks.length === 0) {
-      list.innerHTML = '<p style="color:#888;padding:14px">No tracks available.</p>';
+      list.innerHTML = '<p style="color:#888;padding:14px;text-align:center">No tracks available.</p>';
       return;
     }
     data.tracks.forEach(track => {
@@ -201,11 +346,7 @@
   }
 
   // ── Play a track ──────────────────────────────────────────────────────
-  // Token passed as query param — HTML audio element cannot send custom headers.
-  // We use the 'canplay' event to auto-play once enough data is loaded,
-  // avoiding the double-click issue where first click loads and second plays.
   function playTrack(track, el) {
-    // Highlight active track
     document.querySelectorAll('.track-item').forEach(d => d.classList.remove('active'));
     if (el) el.classList.add('active');
 
@@ -215,53 +356,111 @@
     stopHeartbeat();
 
     $('now-playing').textContent = track.title;
-
-    // Show loading indicator
+    $('btn-play').disabled = true;
     setLoading(true);
 
-    player.src = `${WORKER}/audio/${track.r2_key}?t=${encodeURIComponent(token)}`;
-    player.load();
+    audio.src = `${WORKER}/audio/${track.r2_key}?t=${encodeURIComponent(token)}`;
+    audio.load();
 
-    // Auto-play once enough data is buffered
-    player.addEventListener('canplay', function onCanPlay() {
-      player.removeEventListener('canplay', onCanPlay);
+    audio.addEventListener('canplay', function onCanPlay() {
+      audio.removeEventListener('canplay', onCanPlay);
+      $('btn-play').disabled = false;
       setLoading(false);
-      player.play().catch(() => setLoading(false));
+      audio.play().catch(() => {});
     }, { once: true });
 
-    // Hide loading on error too
-    player.addEventListener('error', function onError() {
-      player.removeEventListener('error', onError);
+    audio.addEventListener('error', function onErr() {
+      audio.removeEventListener('error', onErr);
+      $('btn-play').disabled = false;
       setLoading(false);
     }, { once: true });
   }
 
-  // ── Loading indicator ─────────────────────────────────────────────────
+  // ── Play/Pause button ─────────────────────────────────────────────────
+  $('btn-play').onclick = () => {
+    if (!currentTrack) return;
+    if (audio.paused) audio.play().catch(() => {});
+    else audio.pause();
+  };
+
+  // ── Volume ────────────────────────────────────────────────────────────
+  $('volume-slider').oninput = function() {
+    audio.volume = parseFloat(this.value);
+  };
+
+  // ── Progress bar ──────────────────────────────────────────────────────
+  audio.addEventListener('timeupdate', updateProgress);
+  audio.addEventListener('progress',   updateBuffered);
+  audio.addEventListener('durationchange', updateProgress);
+
+  function updateProgress() {
+    const dur = audio.duration;
+    const cur = audio.currentTime;
+    if (!dur || isNaN(dur)) return;
+    const pct = (cur / dur) * 100;
+    $('progress-played').style.width = pct + '%';
+    $('progress-thumb').style.left   = pct + '%';
+    $('player-time').textContent     = `${fmt(cur)} / ${fmt(dur)}`;
+  }
+
+  function updateBuffered() {
+    const dur = audio.duration;
+    if (!dur || isNaN(dur) || audio.buffered.length === 0) return;
+    const buffEnd = audio.buffered.end(audio.buffered.length - 1);
+    $('progress-buffered').style.width = ((buffEnd / dur) * 100) + '%';
+  }
+
+  // Seek on click
+  $('progress-wrap').addEventListener('click', function(e) {
+    if (!audio.duration) return;
+    const rect = this.getBoundingClientRect();
+    const pct  = (e.clientX - rect.left) / rect.width;
+    audio.currentTime = pct * audio.duration;
+  });
+
+  // ── Audio events ──────────────────────────────────────────────────────
+  audio.addEventListener('play', () => {
+    showPause(true);
+    logEvent(wasPlaying ? 'resume' : 'start');
+    wasPlaying = true;
+    startHeartbeat();
+  });
+  audio.addEventListener('pause', () => {
+    showPause(false);
+    logEvent('pause');
+    stopHeartbeat();
+  });
+  audio.addEventListener('ended', () => {
+    showPause(false);
+    logEvent('end');
+    stopHeartbeat();
+    wasPlaying = false;
+    $('progress-played').style.width = '0%';
+    $('progress-thumb').style.left   = '0%';
+  });
+  audio.addEventListener('waiting', () => setLoading(true));
+  audio.addEventListener('playing', () => setLoading(false));
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') { logEvent('end'); stopHeartbeat(); }
+  });
+
+  // ── Helpers ───────────────────────────────────────────────────────────
+  function showPause(on) {
+    $('icon-play').style.display  = on ? 'none'  : '';
+    $('icon-pause').style.display = on ? ''      : 'none';
+  }
+
   function setLoading(on) {
-    $('loading-bar').classList.toggle('active', on);
+    $('progress-loading').classList.toggle('active', on);
     $('loading-label').classList.toggle('active', on);
   }
 
-  // Also hide loading when waiting event fires (stalled mid-playback)
-  player.addEventListener('waiting', () => setLoading(true));
-  player.addEventListener('playing', () => setLoading(false));
-
-  // ── Play logging ──────────────────────────────────────────────────────
-  function logEvent(type) {
-    if (!currentTrack || !token) return;
-    fetch(WORKER + '/log', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-      body: JSON.stringify({
-        clientTimestamp: new Date().toISOString(),
-        trackId:    currentTrack.id,
-        trackTitle: currentTrack.title,
-        eventType:  type,
-        positionMs: Math.round((player.currentTime || 0) * 1000),
-        durationMs: isFinite(player.duration) ? Math.round(player.duration * 1000) : null,
-        sessionId,
-      }),
-    });
+  function fmt(s) {
+    if (!s || isNaN(s)) return '0:00';
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60).toString().padStart(2, '0');
+    return `${m}:${sec}`;
   }
 
   function startHeartbeat() {
@@ -272,20 +471,23 @@
     if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
   }
 
-  player.addEventListener('play', () => {
-    logEvent(wasPlaying ? 'resume' : 'start');
-    wasPlaying = true;
-    startHeartbeat();
-  });
-  player.addEventListener('pause',  () => { logEvent('pause'); stopHeartbeat(); });
-  player.addEventListener('ended',  () => { logEvent('end');   stopHeartbeat(); wasPlaying = false; });
-  player.addEventListener('contextmenu', e => e.preventDefault());
+  function logEvent(type) {
+    if (!currentTrack || !token) return;
+    fetch(WORKER + '/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({
+        clientTimestamp: new Date().toISOString(),
+        trackId:    currentTrack.id,
+        trackTitle: currentTrack.title,
+        eventType:  type,
+        positionMs: Math.round((audio.currentTime || 0) * 1000),
+        durationMs: isFinite(audio.duration) ? Math.round(audio.duration * 1000) : null,
+        sessionId,
+      }),
+    });
+  }
 
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') { logEvent('end'); stopHeartbeat(); }
-  });
-
-  // ── Logout ────────────────────────────────────────────────────────────
   $('logout-btn').onclick = logout;
   function logout() {
     localStorage.removeItem('ap_token');
@@ -293,7 +495,6 @@
     location.reload();
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────────
   function newSessionId() {
     return Math.random().toString(36).slice(2) + Date.now().toString(36);
   }
