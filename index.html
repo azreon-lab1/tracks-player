@@ -181,7 +181,7 @@
     }
     .track-item:last-child { border-bottom: none; }
     .track-item:hover { background: #f0f4ff; }
-    .track-item.active { background: #e8effe; }
+    .track-item.active { background: #c5d4f5; }
     .track-title { font-weight: 600; color: #222; }
     .track-duration { font-size: .85rem; color: #888; margin-top: 4px; }
 
@@ -404,12 +404,12 @@
 
     audio.src = `${WORKER}/audio/${track.r2_key}?t=${encodeURIComponent(token)}`;
     audio.load();
+    audio.play().catch(() => {});
 
     audio.addEventListener('canplay', function onCanPlay() {
       audio.removeEventListener('canplay', onCanPlay);
       $('btn-play').disabled = false;
       setLoading(false);
-      audio.play().catch(() => {});
     }, { once: true });
 
     audio.addEventListener('error', function onErr() {
