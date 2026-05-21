@@ -409,6 +409,29 @@
     audio.load();
     audio.play().catch(() => {});
 
+    // ── Media Session API ─────────────────────────────────────────────
+    // Registers the track with the OS so:
+    // - Track title appears on lock screen
+    // - Play/pause controls work from lock screen
+    // - Browser keeps audio active in background (prevents throttling)
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title:  track.title,
+        artist: 'Audio Platform',
+        album:  '',
+      });
+      navigator.mediaSession.setActionHandler('play', () => {
+        audio.play().catch(() => {});
+      });
+      navigator.mediaSession.setActionHandler('pause', () => {
+        audio.pause();
+      });
+      navigator.mediaSession.setActionHandler('stop', () => {
+        audio.pause();
+        logEvent('end');
+      });
+    }
+
     audio.addEventListener('canplay', function onCanPlay() {
       audio.removeEventListener('canplay', onCanPlay);
       $('btn-play').disabled = false;
@@ -520,7 +543,16 @@
   }
 
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') { logEvent('end'); stopHeartbeat(); stopWatchdog(); }
+    if (document.visibilityState === 'hidden') {
+      // Log 'background' not 'end' — audio may still be playing
+      logEvent('background');
+    } else {
+      // Page came back to foreground
+      if (currentTrack && !audio.paused) {
+        logEvent('resume');
+        resetWatchdog();
+      }
+    }
   });
 
   // ── Helpers ───────────────────────────────────────────────────────────
