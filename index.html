@@ -6,7 +6,7 @@
   <title>Audio Platform</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: sans-serif; background: #e0b559; min-height: 100vh; }
+    body { font-family: sans-serif; background: #C8962E; min-height: 100vh; }
     .container { max-width: 520px; margin: 0 auto; padding: 24px 16px; }
 
     /* Cards */
@@ -182,8 +182,8 @@
     }
     .track-item:last-child { border-bottom: none; }
     .track-item:hover { background: #f0f4ff; }
+    .track-item.active { background: #c5d4f5; }
     .track-item.active .track-title { font-weight: 600; }
-    .track-item.active { background: #c5d4f5; font-weight: 600; }
     .track-title { font-weight: 400; color: #222; }
     .track-duration { font-size: .85rem; color: #888; margin-top: 4px; }
 
@@ -399,6 +399,7 @@
     sessionId    = newSessionId();
     wasPlaying   = false;
     stopHeartbeat();
+    stopWatchdog();
 
     $('now-playing').textContent = track.title;
     $('btn-play').disabled = true;
@@ -469,25 +470,57 @@
     logEvent(wasPlaying ? 'resume' : 'start');
     wasPlaying = true;
     startHeartbeat();
+    resetWatchdog();
   });
   audio.addEventListener('pause', () => {
     showPause(false);
     logEvent('pause');
     stopHeartbeat();
+    stopWatchdog();
   });
   audio.addEventListener('ended', () => {
     showPause(false);
     logEvent('end');
     stopHeartbeat();
+    stopWatchdog();
     wasPlaying = false;
     $('progress-played').style.width = '0%';
     $('progress-thumb').style.left   = '0%';
   });
   audio.addEventListener('waiting', () => setLoading(true));
-  audio.addEventListener('playing', () => setLoading(false));
+  audio.addEventListener('playing', () => { setLoading(false); resetWatchdog(); });
+  audio.addEventListener('stalled', () => {
+    setLoading(true);
+    logEvent('error');
+  });
+
+  // ── Watchdog — detect silent stall ───────────────────────────────────
+  // If position hasn't moved in 15s while audio thinks it's playing, flag it.
+  let watchdogTimer = null;
+  let lastPosition  = 0;
+
+  function resetWatchdog() {
+    clearInterval(watchdogTimer);
+    lastPosition = audio.currentTime;
+    watchdogTimer = setInterval(() => {
+      if (!audio.paused && audio.currentTime === lastPosition && currentTrack) {
+        // Position frozen — stream stalled silently
+        setLoading(true);
+        showPause(false);
+        logEvent('error');
+        clearInterval(watchdogTimer);
+      }
+      lastPosition = audio.currentTime;
+    }, 15000);
+  }
+
+  function stopWatchdog() {
+    clearInterval(watchdogTimer);
+    watchdogTimer = null;
+  }
 
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') { logEvent('end'); stopHeartbeat(); }
+    if (document.visibilityState === 'hidden') { logEvent('end'); stopHeartbeat(); stopWatchdog(); }
   });
 
   // ── Helpers ───────────────────────────────────────────────────────────
