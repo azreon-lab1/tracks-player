@@ -305,7 +305,7 @@
 
   // Audio element (hidden — we use custom controls)
   const audio = new Audio();
-  audio.preload = 'metadata';
+  audio.preload = 'auto';
 
   const $ = id => document.getElementById(id);
 
@@ -528,10 +528,26 @@
     watchdogTimer = setInterval(() => {
       if (!audio.paused && audio.currentTime === lastPosition && currentTrack) {
         // Position frozen — stream stalled silently
+        console.log('Watchdog: stall detected at', audio.currentTime);
         setLoading(true);
         showPause(false);
         logEvent('error');
+        stopHeartbeat();
         clearInterval(watchdogTimer);
+
+        // Attempt reconnect — seek to current position to force new request
+        const pos = audio.currentTime;
+        audio.src = `${WORKER}/audio/${currentTrack.r2_key}?t=${encodeURIComponent(token)}`;
+        audio.load();
+        audio.currentTime = pos;
+        audio.play().then(() => {
+          setLoading(false);
+          showPause(true);
+          startHeartbeat();
+          resetWatchdog();
+        }).catch(() => {
+          setLoading(false);
+        });
       }
       lastPosition = audio.currentTime;
     }, 15000);
