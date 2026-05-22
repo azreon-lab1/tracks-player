@@ -504,7 +504,7 @@
     logEvent(wasPlaying ? 'resume' : 'start');
     wasPlaying = true;
     startHeartbeat();
-    resetWatchdog();
+    resetWatchdog();  // Only start watchdog once audio is actually playing
   });
   audio.addEventListener('pause', () => {
     showPause(false);
@@ -522,7 +522,7 @@
     $('progress-thumb').style.left   = '0%';
   });
   audio.addEventListener('waiting', () => setLoading(true));
-  audio.addEventListener('playing', () => { setLoading(false); resetWatchdog(); });
+  audio.addEventListener('playing', () => setLoading(false));
   audio.addEventListener('stalled', () => {
     setLoading(true);
     logEvent('error');
@@ -537,8 +537,14 @@
     clearInterval(watchdogTimer);
     lastPosition = audio.currentTime;
     watchdogTimer = setInterval(() => {
+      // Don't check while page is hidden — timers freeze in background
+      // so position won't have moved even if audio is playing fine
+      if (document.visibilityState === 'hidden') {
+        lastPosition = audio.currentTime;
+        return;
+      }
       if (!audio.paused && audio.currentTime === lastPosition && currentTrack) {
-        // Position frozen — stream stalled silently
+        // Position frozen while page is visible — genuine stall
         console.log('Watchdog: stall detected at', audio.currentTime);
         setLoading(true);
         showPause(false);
@@ -546,7 +552,7 @@
         stopHeartbeat();
         clearInterval(watchdogTimer);
 
-        // Attempt reconnect — seek to current position to force new request
+        // Attempt reconnect from same position
         const pos = audio.currentTime;
         audio.src = `${WORKER}/audio/${currentTrack.r2_key}?t=${encodeURIComponent(token)}`;
         audio.load();
@@ -571,10 +577,11 @@
 
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
-      // Log 'background' not 'end' — audio may still be playing
       logEvent('background');
     } else {
-      // Page came back to foreground
+      // Reset watchdog position when returning to foreground
+      // so it doesn't falsely detect a stall
+      lastPosition = audio.currentTime;
       if (currentTrack && !audio.paused) {
         logEvent('resume');
         resetWatchdog();
