@@ -407,7 +407,18 @@
 
     audio.src = `${WORKER}/audio/${track.r2_key}?t=${encodeURIComponent(token)}`;
     audio.load();
-    audio.play().catch(() => {});
+
+    // Call play() immediately to satisfy browser gesture requirement.
+    // If Chrome blocks it before data arrives, retry on canplay.
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        audio.addEventListener('canplay', function onRetry() {
+          audio.removeEventListener('canplay', onRetry);
+          audio.play().catch(() => {});
+        }, { once: true });
+      });
+    }
 
     // ── Media Session API ─────────────────────────────────────────────
     // Registers the track with the OS so:
