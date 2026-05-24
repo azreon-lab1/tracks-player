@@ -296,6 +296,13 @@
 <script>
   const WORKER = 'https://audio-worker.azreon.workers.dev';
 
+  // ── Playback mode ────────────────────────────────────────────────────
+  // 'blob'   → downloads full file in background, switches to blob when complete.
+  //            No B2 timeouts, works offline after download. Recommended.
+  // 'stream' → streams directly from server. Plays immediately, no background download.
+  //            Watchdog reconnects on stall. Use for very large files or slow connections.
+  const DOWNLOAD_MODE = 'blob';
+
   let token        = localStorage.getItem('ap_token');
   let currentTrack = null;
   let sessionId    = newSessionId();
@@ -391,6 +398,9 @@
   }
 
   // ── Play a track ──────────────────────────────────────────────────────
+  let currentBlobUrl = null;  // Tracks active blob URL for cleanup
+  let fetchController = null; // Allows cancelling in-progress background fetch
+
   function playTrack(track, el) {
     document.querySelectorAll('.track-item').forEach(d => d.classList.remove('active'));
     if (el) el.classList.add('active');
@@ -401,15 +411,21 @@
     stopHeartbeat();
     stopWatchdog();
 
+    // Cancel any previous background fetch (blob mode only)
+    if (fetchController) { fetchController.abort(); fetchController = null; }
+    // Release previous blob URL from memory
+    if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
+
     $('now-playing').textContent = track.title;
     $('btn-play').disabled = true;
     setLoading(true);
 
-    audio.src = `${WORKER}/audio/${track.r2_key}?t=${encodeURIComponent(token)}`;
+    const audioUrl = `${WORKER}/audio/${track.r2_key}?t=${encodeURIComponent(token)}`;
+
+    // Start streaming immediately so audio plays right away
+    audio.src = audioUrl;
     audio.load();
 
-    // Call play() immediately to satisfy browser gesture requirement.
-    // If Chrome blocks it before data arrives, retry on canplay.
     const playPromise = audio.play();
     if (playPromise !== undefined) {
       playPromise.catch(() => {
@@ -420,11 +436,37 @@
       });
     }
 
+    // ── Background fetch (blob mode only) ───────────────────────────────
+    // Downloads the full file in background, then switches audio to blob URL.
+    // Result: no B2 connection timeouts, works offline after download completes.
+    if (DOWNLOAD_MODE === 'blob') {
+      fetchController = new AbortController();
+      const signal = fetchController.signal;
+
+      fetch(audioUrl, { signal })
+        .then(res => {
+          if (!res.ok) throw new Error('Fetch failed');
+          return res.blob();
+        })
+        .then(blob => {
+          if (signal.aborted) return;
+          const blobUrl = URL.createObjectURL(blob);
+          currentBlobUrl = blobUrl;
+          const pos     = audio.currentTime;
+          const playing = !audio.paused;
+          audio.src = blobUrl;
+          audio.load();
+          audio.currentTime = pos;
+          if (playing) audio.play().catch(() => {});
+        })
+        .catch(err => {
+          if (err.name !== 'AbortError') {
+            console.warn('Background fetch failed, continuing from stream:', err);
+          }
+        });
+    }
+
     // ── Media Session API ─────────────────────────────────────────────
-    // Registers the track with the OS so:
-    // - Track title appears on lock screen
-    // - Play/pause controls work from lock screen
-    // - Browser keeps audio active in background (prevents throttling)
     if ('mediaSession' in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({
         title:  track.title,
