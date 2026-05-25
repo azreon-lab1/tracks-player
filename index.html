@@ -543,8 +543,14 @@
   // ── Audio events ──────────────────────────────────────────────────────
   audio.addEventListener('play', () => {
     showPause(true);
-    logEvent(wasPlaying ? 'resume' : 'start');
-    wasPlaying = true;
+    if (!wasPlaying) {
+      // First play of this session — log start
+      logEvent('start');
+      wasPlaying = true;
+    } else if (audio.currentTime > 0) {
+      // Resuming after a real pause (position > 0 confirms it's not a retry)
+      logEvent('resume');
+    }
     startHeartbeat();
     resetWatchdog();  // Only start watchdog once audio is actually playing
   });
