@@ -548,12 +548,6 @@
     startHeartbeat();
     resetWatchdog();  // Only start watchdog once audio is actually playing
   });
-  audio.addEventListener('pause', () => {
-    showPause(false);
-    logEvent('pause');
-    stopHeartbeat();
-    stopWatchdog();
-  });
   audio.addEventListener('ended', () => {
     showPause(false);
     logEvent('end');
@@ -563,9 +557,17 @@
     $('progress-played').style.width = '0%';
     $('progress-thumb').style.left   = '0%';
   });
-  audio.addEventListener('waiting', () => setLoading(true));
+  audio.addEventListener('pause', () => {
+    showPause(false);
+    // Don't log pause if track just ended naturally
+    if (!audio.ended) logEvent('pause');
+    stopHeartbeat();
+    stopWatchdog();
+  });
+  audio.addEventListener('waiting', () => { if (!audio.ended) setLoading(true); });
   audio.addEventListener('playing', () => setLoading(false));
   audio.addEventListener('stalled', () => {
+    if (audio.ended) return; // ignore stalled after natural end
     setLoading(true);
     logEvent('error');
   });
@@ -579,9 +581,8 @@
     clearInterval(watchdogTimer);
     lastPosition = audio.currentTime;
     watchdogTimer = setInterval(() => {
-      // Don't check while page is hidden — timers freeze in background
-      // so position won't have moved even if audio is playing fine
-      if (document.visibilityState === 'hidden') {
+      // Don't check while page is hidden or track has ended
+      if (document.visibilityState === 'hidden' || audio.ended) {
         lastPosition = audio.currentTime;
         return;
       }
