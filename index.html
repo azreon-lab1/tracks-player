@@ -628,11 +628,10 @@
     if (document.visibilityState === 'hidden') {
       logEvent('background');
     } else {
-      // Reset watchdog position when returning to foreground
-      // so it doesn't falsely detect a stall
+      // Screen unlocked — audio was never stopped
       lastPosition = audio.currentTime;
       if (currentTrack && !audio.paused) {
-        logEvent('resume');
+        logEvent('foreground');
         resetWatchdog();
       }
     }
