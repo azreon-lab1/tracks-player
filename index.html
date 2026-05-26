@@ -308,6 +308,7 @@
   let sessionId    = newSessionId();
   let wasPlaying   = false;
   let hasPaused    = false;
+  let isSwitchingBlob = false;
   let heartbeatTimer = null;
   const HEARTBEAT_MS = 30000;
 
@@ -410,6 +411,7 @@
     sessionId    = newSessionId();
     wasPlaying   = false;
     hasPaused    = false;
+    isSwitchingBlob = false;
     stopHeartbeat();
     stopWatchdog();
 
@@ -456,10 +458,11 @@
           currentBlobUrl = blobUrl;
           const pos     = audio.currentTime;
           const playing = !audio.paused;
+          isSwitchingBlob = true;  // prevent spurious play event log
           audio.src = blobUrl;
-          audio.load();
           audio.currentTime = pos;
           if (playing) audio.play().catch(() => {});
+          setTimeout(() => { isSwitchingBlob = false; }, 500);
         })
         .catch(err => {
           if (err.name !== 'AbortError') {
@@ -545,11 +548,11 @@
   // ── Audio events ──────────────────────────────────────────────────────
   audio.addEventListener('play', () => {
     showPause(true);
+    if (isSwitchingBlob) return; // blob switch — don't log
     if (!wasPlaying) {
       logEvent('start');
       wasPlaying = true;
     } else if (hasPaused) {
-      // Only log resume if there was a real pause first
       logEvent('resume');
       hasPaused = false;
     }
