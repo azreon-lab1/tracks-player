@@ -454,15 +454,20 @@
         })
         .then(blob => {
           if (signal.aborted) return;
+          if (audio.ended || !currentTrack) return;
           const blobUrl = URL.createObjectURL(blob);
           currentBlobUrl = blobUrl;
           const pos     = audio.currentTime;
           const playing = !audio.paused;
-          isSwitchingBlob = true;  // prevent spurious play event log
+          isSwitchingBlob = true;
           audio.src = blobUrl;
-          audio.currentTime = pos;
-          if (playing) audio.play().catch(() => {});
-          setTimeout(() => { isSwitchingBlob = false; }, 500);
+          // Wait for browser to fully parse blob duration before seeking
+          audio.addEventListener('canplaythrough', function onReady() {
+            audio.removeEventListener('canplaythrough', onReady);
+            audio.currentTime = pos;
+            if (playing) audio.play().catch(() => {});
+            setTimeout(() => { isSwitchingBlob = false; }, 500);
+          }, { once: true });
         })
         .catch(err => {
           if (err.name !== 'AbortError') {
