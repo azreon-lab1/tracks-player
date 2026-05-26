@@ -307,6 +307,7 @@
   let currentTrack = null;
   let sessionId    = newSessionId();
   let wasPlaying   = false;
+  let hasPaused    = false;
   let heartbeatTimer = null;
   const HEARTBEAT_MS = 30000;
 
@@ -408,6 +409,7 @@
     currentTrack = track;
     sessionId    = newSessionId();
     wasPlaying   = false;
+    hasPaused    = false;
     stopHeartbeat();
     stopWatchdog();
 
@@ -544,15 +546,15 @@
   audio.addEventListener('play', () => {
     showPause(true);
     if (!wasPlaying) {
-      // First play of this session — log start
       logEvent('start');
       wasPlaying = true;
-    } else if (audio.currentTime > 0) {
-      // Resuming after a real pause (position > 0 confirms it's not a retry)
+    } else if (hasPaused) {
+      // Only log resume if there was a real pause first
       logEvent('resume');
+      hasPaused = false;
     }
     startHeartbeat();
-    resetWatchdog();  // Only start watchdog once audio is actually playing
+    resetWatchdog();
   });
   audio.addEventListener('ended', () => {
     showPause(false);
@@ -565,8 +567,10 @@
   });
   audio.addEventListener('pause', () => {
     showPause(false);
-    // Don't log pause if track just ended naturally
-    if (!audio.ended) logEvent('pause');
+    if (!audio.ended) {
+      logEvent('pause');
+      hasPaused = true;
+    }
     stopHeartbeat();
     stopWatchdog();
   });
@@ -625,12 +629,12 @@
   }
 
   document.addEventListener('visibilitychange', () => {
+    if (!currentTrack || audio.ended) return; // ignore after track ends
     if (document.visibilityState === 'hidden') {
       logEvent('background');
     } else {
-      // Screen unlocked — audio was never stopped
       lastPosition = audio.currentTime;
-      if (currentTrack && !audio.paused) {
+      if (!audio.paused) {
         logEvent('foreground');
         resetWatchdog();
       }
