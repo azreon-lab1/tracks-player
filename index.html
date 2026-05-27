@@ -130,6 +130,10 @@
   let heartbeatTimer  = null;
   const HEARTBEAT_MS  = 30000;
 
+  // Set to false to suppress heartbeat events from logs (reduces noise)
+  // Heartbeats still fire internally — only logging is suppressed
+  const LOG_HEARTBEAT = true;
+
   const audio = new Audio();
   audio.preload = 'auto';
 
@@ -444,7 +448,9 @@
 
   function startHeartbeat() {
     stopHeartbeat();
-    heartbeatTimer = setInterval(() => logEvent('heartbeat'), HEARTBEAT_MS);
+    heartbeatTimer = setInterval(() => {
+      if (LOG_HEARTBEAT) logEvent('heartbeat');
+    }, HEARTBEAT_MS);
   }
   function stopHeartbeat() {
     if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
