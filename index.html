@@ -129,6 +129,7 @@
   let isSwitchingBlob = false;
   let heartbeatTimer  = null;
   const HEARTBEAT_MS  = 30000;
+  const LOG_HEARTBEAT = true; // set to false to suppress heartbeat events from logs
 
   const audio = new Audio();
   audio.preload = 'auto';
@@ -451,7 +452,9 @@
 
   function startHeartbeat() {
     stopHeartbeat();
-    heartbeatTimer = setInterval(() => logEvent('heartbeat'), HEARTBEAT_MS);
+    heartbeatTimer = setInterval(() => {
+      if (LOG_HEARTBEAT) logEvent('heartbeat');
+    }, HEARTBEAT_MS);
   }
   function stopHeartbeat() {
     if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
