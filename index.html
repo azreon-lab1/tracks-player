@@ -8,222 +8,55 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: sans-serif; background: #C8962E; min-height: 100vh; }
     .container { max-width: 520px; margin: 0 auto; padding: 24px 16px; }
-
-    /* Cards */
     .card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,.08); margin-bottom: 16px; }
-
-    /* Auth */
     h1 { font-size: 1.4rem; color: #222; margin-bottom: 16px; text-align: center; }
     input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; margin: 8px 0; }
     button.primary { width: 100%; padding: 14px; background: #1A4F8A; color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-top: 8px; }
     button.primary:disabled { opacity: .5; cursor: not-allowed; }
     button.secondary { width: 100%; padding: 14px; background: #888; color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-top: 8px; }
     .msg { font-size: .9rem; color: #c00; margin-top: 8px; min-height: 20px; }
-
-    /* Now playing title */
-    #now-playing {
-      text-align: center;
-      font-size: 1.3rem;
-      font-weight: 700;
-      color: #222;
-      margin-bottom: 18px;
-    }
-
-    /* ── Custom Player ───────────────────────────── */
-    .player {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    /* Top row: play/pause — time — volume */
-    .player-controls {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    /* Play/Pause button */
-    .btn-play {
-      flex-shrink: 0;
-      width: 42px;
-      height: 42px;
-      border-radius: 50%;
-      background: #1A4F8A;
-      border: none;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background .15s;
-    }
+    #now-playing { text-align: center; font-size: 1.3rem; font-weight: 700; color: #222; margin-bottom: 18px; }
+    .player { display: flex; flex-direction: column; gap: 12px; }
+    .player-controls { display: flex; align-items: center; gap: 12px; }
+    .btn-play { flex-shrink: 0; width: 42px; height: 42px; border-radius: 50%; background: #1A4F8A; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .15s; }
     .btn-play:hover { background: #153f6e; }
     .btn-play svg { fill: #fff; width: 18px; height: 18px; }
     .btn-play:disabled { opacity: .4; cursor: not-allowed; }
-
-    /* Time display */
-    .player-time {
-      font-size: .85rem;
-      color: #555;
-      white-space: nowrap;
-      min-width: 90px;
-      text-align: center;
-    }
-
-    /* Volume */
-    .volume-wrap {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-left: auto;
-    }
+    .player-time { font-size: .85rem; color: #555; white-space: nowrap; min-width: 90px; text-align: center; }
+    .volume-wrap { display: flex; align-items: center; gap: 6px; margin-left: auto; }
     .volume-wrap svg { fill: #555; width: 18px; height: 18px; flex-shrink: 0; }
-    input[type=range].volume-slider {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 72px;
-      height: 4px;
-      border-radius: 2px;
-      background: #ddd;
-      outline: none;
-      margin: 0;
-      padding: 0;
-      border: none;
-      cursor: pointer;
-    }
-    input[type=range].volume-slider::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: #1A4F8A;
-      cursor: pointer;
-    }
-    input[type=range].volume-slider::-moz-range-thumb {
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: #1A4F8A;
-      border: none;
-      cursor: pointer;
-    }
-
-    /* Progress bar row */
-    .progress-wrap {
-      position: relative;
-      height: 6px;
-      border-radius: 3px;
-      background: #e8e8e8;
-      cursor: pointer;
-      overflow: hidden;
-    }
-    /* Loaded/buffered — light gold */
-    .progress-buffered {
-      position: absolute;
-      left: 0; top: 0; bottom: 0;
-      background: #d4a843;
-      border-radius: 3px;
-      width: 0%;
-      transition: width .3s linear;
-      opacity: 0.5;
-    }
-    /* Played — black */
-    .progress-played {
-      position: absolute;
-      left: 0; top: 0; bottom: 0;
-      background: #111;
-      border-radius: 3px;
-      width: 0%;
-    }
-    /* Thumb dot */
-    .progress-thumb {
-      position: absolute;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: #111;
-      left: 0%;
-      transition: left .1s;
-    }
-
-    /* Loading animation overlay */
-    .progress-loading {
-      display: none;
-      position: absolute;
-      left: 0; top: 0; bottom: 0;
-      width: 40%;
-      background: linear-gradient(90deg, transparent, #d4a843, transparent);
-      animation: shimmer 1.2s ease-in-out infinite;
-    }
+    input[type=range].volume-slider { -webkit-appearance: none; appearance: none; width: 72px; height: 4px; border-radius: 2px; background: #ddd; outline: none; margin: 0; padding: 0; border: none; cursor: pointer; }
+    input[type=range].volume-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #1A4F8A; cursor: pointer; }
+    input[type=range].volume-slider::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #1A4F8A; border: none; cursor: pointer; }
+    .progress-wrap { position: relative; height: 6px; border-radius: 3px; background: #e8e8e8; cursor: pointer; overflow: hidden; }
+    .progress-buffered { position: absolute; left: 0; top: 0; bottom: 0; background: #d4a843; border-radius: 3px; width: 0%; transition: width .3s linear; opacity: 0.5; }
+    .progress-played { position: absolute; left: 0; top: 0; bottom: 0; background: #111; border-radius: 3px; width: 0%; }
+    .progress-thumb { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 12px; height: 12px; border-radius: 50%; background: #111; left: 0%; transition: left .1s; }
+    .progress-loading { display: none; position: absolute; left: 0; top: 0; bottom: 0; width: 40%; background: linear-gradient(90deg, transparent, #d4a843, transparent); animation: shimmer 1.2s ease-in-out infinite; }
     .progress-loading.active { display: block; }
-    @keyframes shimmer {
-      0%   { transform: translateX(-150%); }
-      100% { transform: translateX(400%); }
-    }
-    .loading-label {
-      display: none;
-      font-size: .78rem;
-      color: #b8892a;
-      text-align: center;
-      margin-top: 4px;
-    }
+    @keyframes shimmer { 0% { transform: translateX(-150%); } 100% { transform: translateX(400%); } }
+    .loading-label { display: none; font-size: .78rem; color: #b8892a; text-align: center; margin-top: 4px; }
     .loading-label.active { display: block; }
-
-    /* Track list */
-    .track-item {
-      padding: 14px;
-      border-bottom: 1px solid #eee;
-      cursor: pointer;
-      border-radius: 8px;
-      transition: background .15s;
-      text-align: center;
-    }
+    .track-item { padding: 14px; border-bottom: 1px solid #eee; cursor: pointer; border-radius: 8px; transition: background .15s; text-align: center; }
     .track-item:last-child { border-bottom: none; }
     .track-item:hover { background: #f0f4ff; }
     .track-item.active { background: #c5d4f5; }
     .track-item.active .track-title { font-weight: 600; }
     .track-title { font-weight: 400; color: #222; }
     .track-duration { font-size: .85rem; color: #888; margin-top: 4px; }
-
     #player-section { display: none; }
     #otp-section    { display: none; }
     #auth-section   { display: none; }
-
-    /* Startup loading screen */
-    #startup-loading {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 60vh;
-    }
-    .startup-bar {
-      width: 200px;
-      height: 4px;
-      background: rgba(255,255,255,0.3);
-      border-radius: 2px;
-      overflow: hidden;
-    }
-    .startup-bar::after {
-      content: '';
-      display: block;
-      height: 100%;
-      width: 40%;
-      background: #d4a843;
-      border-radius: 2px;
-      animation: slide 1.2s ease-in-out infinite;
-    }
-    .startup-label {
-      font-size: .85rem;
-      color: rgba(255,255,255,0.7);
-    }
+    #startup-loading { display: flex; align-items: center; justify-content: center; min-height: 60vh; }
+    .startup-bar { width: 200px; height: 4px; background: rgba(255,255,255,0.3); border-radius: 2px; overflow: hidden; }
+    .startup-bar::after { content: ''; display: block; height: 100%; width: 40%; background: #d4a843; border-radius: 2px; animation: slide 1.2s ease-in-out infinite; }
+    @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }
+    .startup-label { font-size: .85rem; color: rgba(255,255,255,0.7); }
   </style>
 </head>
 <body>
 <div class="container">
 
-  <!-- Startup loading -->
   <div id="startup-loading">
     <div class="card" style="text-align:center;padding:32px 24px;display:inline-block;min-width:200px">
       <div class="startup-bar" style="margin:0 auto 12px"></div>
@@ -231,7 +64,6 @@
     </div>
   </div>
 
-  <!-- Email -->
   <div id="auth-section" class="card">
     <h1>Audio Platform</h1>
     <p style="color:#555;margin-bottom:8px;text-align:center">Enter your email to receive an access code.</p>
@@ -240,7 +72,6 @@
     <div class="msg" id="auth-msg"></div>
   </div>
 
-  <!-- OTP -->
   <div id="otp-section" class="card">
     <h1>Enter Your Code</h1>
     <p style="color:#555;margin-bottom:8px;text-align:center">Check your email for the 6-digit code.</p>
@@ -250,31 +81,21 @@
     <div class="msg" id="otp-msg"></div>
   </div>
 
-  <!-- Player -->
   <div id="player-section">
     <div class="card">
       <div id="now-playing">Select a track below</div>
-
       <div class="player">
-        <!-- Controls row -->
         <div class="player-controls">
           <button class="btn-play" id="btn-play" disabled>
-            <!-- Play icon -->
             <svg id="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-            <!-- Pause icon (hidden) -->
             <svg id="icon-pause" viewBox="0 0 24 24" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
           </button>
-
           <span class="player-time" id="player-time">0:00 / 0:00</span>
-
           <div class="volume-wrap">
-            <!-- Volume icon -->
             <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
             <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.05" value="1">
           </div>
         </div>
-
-        <!-- Progress bar -->
         <div class="progress-wrap" id="progress-wrap">
           <div class="progress-buffered" id="progress-buffered"></div>
           <div class="progress-loading" id="progress-loading"></div>
@@ -284,11 +105,9 @@
         <div class="loading-label" id="loading-label">Loading…</div>
       </div>
     </div>
-
     <div class="card">
       <div id="track-list"></div>
     </div>
-
     <button class="secondary" id="logout-btn">Log Out</button>
   </div>
 
@@ -296,28 +115,26 @@
 <script>
   const WORKER = 'https://audio-worker.azreon.workers.dev';
 
-  // ── Playback mode ────────────────────────────────────────────────────
-  // 'blob'   → downloads full file in background, switches to blob when complete.
+  // 'blob'   → streams immediately + downloads full file in background.
+  //            When blob ready (and >30s remaining), switches cleanly to blob.
   //            No B2 timeouts, works offline after download. Recommended.
-  // 'stream' → streams directly from server. Plays immediately, no background download.
-  //            Watchdog reconnects on stall. Use for very large files or slow connections.
+  // 'stream' → streams directly, no background download.
   const DOWNLOAD_MODE = 'blob';
 
-  let token        = localStorage.getItem('ap_token');
-  let currentTrack = null;
-  let sessionId    = newSessionId();
-  let wasPlaying   = false;
-  let hasPaused    = false;
-  let heartbeatTimer = null;
-  const HEARTBEAT_MS = 30000;
+  let token           = localStorage.getItem('ap_token');
+  let currentTrack    = null;
+  let sessionId       = newSessionId();
+  let wasPlaying      = false;
+  let hasPaused       = false;
+  let isSwitchingBlob = false;
+  let heartbeatTimer  = null;
+  const HEARTBEAT_MS  = 30000;
 
-  // Audio element (hidden — we use custom controls)
   const audio = new Audio();
   audio.preload = 'auto';
 
   const $ = id => document.getElementById(id);
 
-  // ── On load ──────────────────────────────────────────────────────────
   if (token) {
     loadPlayer();
   } else {
@@ -325,7 +142,6 @@
     $('auth-section').style.display    = 'block';
   }
 
-  // ── Auth ─────────────────────────────────────────────────────────────
   $('send-btn').onclick = async () => {
     const email = $('email-input').value.trim();
     $('auth-msg').textContent = '';
@@ -370,17 +186,16 @@
     if (e.key === 'Enter') $('verify-btn').click();
   });
 
-  // ── Load player ───────────────────────────────────────────────────────
   async function loadPlayer() {
     const res = await fetch(WORKER + '/tracks', {
       headers: { Authorization: 'Bearer ' + token }
     });
     if (res.status === 401) { logout(); return; }
     const data = await res.json();
-    $('startup-loading').style.display  = 'none';
-    $('auth-section').style.display     = 'none';
-    $('otp-section').style.display      = 'none';
-    $('player-section').style.display   = 'block';
+    $('startup-loading').style.display = 'none';
+    $('auth-section').style.display    = 'none';
+    $('otp-section').style.display     = 'none';
+    $('player-section').style.display  = 'block';
     const list = $('track-list');
     list.innerHTML = '';
     if (!data.tracks || data.tracks.length === 0) {
@@ -410,12 +225,12 @@
     sessionId       = newSessionId();
     wasPlaying      = false;
     hasPaused       = false;
+    isSwitchingBlob = false;
     stopHeartbeat();
     stopWatchdog();
 
-    // Cancel any previous fetch and release previous blob
     if (fetchController) { fetchController.abort(); fetchController = null; }
-    if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
+    if (currentBlobUrl)  { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
 
     $('now-playing').textContent = track.title;
     $('btn-play').disabled = true;
@@ -423,46 +238,59 @@
 
     const audioUrl = `${WORKER}/audio/${track.r2_key}?t=${encodeURIComponent(token)}`;
 
+    // Stream immediately
+    audio.src = audioUrl;
+    audio.load();
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        audio.addEventListener('canplay', function onRetry() {
+          audio.removeEventListener('canplay', onRetry);
+          audio.play().catch(() => {});
+        }, { once: true });
+      });
+    }
+
+    // Background blob download — switches to blob when ready
     if (DOWNLOAD_MODE === 'blob') {
-      // Download full file first, then play from blob — clean single source, no switching
       fetchController = new AbortController();
-      fetch(audioUrl, { signal: fetchController.signal })
+      const signal = fetchController.signal;
+
+      fetch(audioUrl, { signal })
         .then(res => {
           if (!res.ok) throw new Error('Fetch failed');
           return res.blob();
         })
         .then(blob => {
-          if (fetchController?.signal.aborted) return;
+          if (signal.aborted) return;
+          if (audio.ended || !currentTrack) return;
+          // Don't switch if less than 30s remaining — stay on stream, ended fires reliably
+          const remaining = isFinite(audio.duration) ? audio.duration - audio.currentTime : 999;
+          if (remaining < 30) return;
           const blobUrl = URL.createObjectURL(blob);
           currentBlobUrl = blobUrl;
+          const pos     = audio.currentTime;
+          const playing = !audio.paused;
+          isSwitchingBlob = true;
           audio.src = blobUrl;
-          audio.load();
-          const playPromise = audio.play();
-          if (playPromise !== undefined) {
-            playPromise.catch(() => {
-              audio.addEventListener('canplay', function onRetry() {
-                audio.removeEventListener('canplay', onRetry);
-                audio.play().catch(() => {});
-              }, { once: true });
-            });
-          }
+          // canplay fires as soon as duration is known — ensures ended fires correctly
+          audio.addEventListener('canplay', function onBlobReady() {
+            audio.removeEventListener('canplay', onBlobReady);
+            if (!currentTrack || audio.ended) return;
+            audio.currentTime = pos;
+            if (playing) audio.play().catch(() => {});
+            setTimeout(() => { isSwitchingBlob = false; }, 500);
+          }, { once: true });
         })
         .catch(err => {
-          if (err.name !== 'AbortError') {
-            console.warn('Blob fetch failed, falling back to stream:', err);
-            startStream(audioUrl);
-          }
+          if (err.name !== 'AbortError')
+            console.warn('Background fetch failed, continuing from stream:', err);
         });
-    } else {
-      startStream(audioUrl);
     }
 
-    // Media Session API
     if ('mediaSession' in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({
-        title:  track.title,
-        artist: 'Audio Platform',
-        album:  '',
+        title: track.title, artist: 'Audio Platform', album: '',
       });
       navigator.mediaSession.setActionHandler('play',  () => { audio.play().catch(() => {}); });
       navigator.mediaSession.setActionHandler('pause', () => { audio.pause(); });
@@ -482,35 +310,16 @@
     }, { once: true });
   }
 
-  function startStream(audioUrl) {
-    audio.src = audioUrl;
-    audio.load();
-    const playPromise = audio.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(() => {
-        audio.addEventListener('canplay', function onRetry() {
-          audio.removeEventListener('canplay', onRetry);
-          audio.play().catch(() => {});
-        }, { once: true });
-      });
-    }
-  }
-
-  // ── Play/Pause button ─────────────────────────────────────────────────
   $('btn-play').onclick = () => {
     if (!currentTrack) return;
     if (audio.paused) audio.play().catch(() => {});
     else audio.pause();
   };
 
-  // ── Volume ────────────────────────────────────────────────────────────
-  $('volume-slider').oninput = function() {
-    audio.volume = parseFloat(this.value);
-  };
+  $('volume-slider').oninput = function() { audio.volume = parseFloat(this.value); };
 
-  // ── Progress bar ──────────────────────────────────────────────────────
-  audio.addEventListener('timeupdate', updateProgress);
-  audio.addEventListener('progress',   updateBuffered);
+  audio.addEventListener('timeupdate',    updateProgress);
+  audio.addEventListener('progress',      updateBuffered);
   audio.addEventListener('durationchange', updateProgress);
 
   function updateProgress() {
@@ -530,7 +339,6 @@
     $('progress-buffered').style.width = ((buffEnd / dur) * 100) + '%';
   }
 
-  // Seek on click
   $('progress-wrap').addEventListener('click', function(e) {
     if (!audio.duration) return;
     const rect = this.getBoundingClientRect();
@@ -541,6 +349,7 @@
   // ── Audio events ──────────────────────────────────────────────────────
   audio.addEventListener('play', () => {
     showPause(true);
+    if (isSwitchingBlob) return;
     if (!wasPlaying) {
       logEvent('start');
       wasPlaying = true;
@@ -562,23 +371,19 @@
   });
   audio.addEventListener('pause', () => {
     showPause(false);
-    if (!audio.ended) {
-      logEvent('pause');
-      hasPaused = true;
-    }
+    if (!audio.ended) { logEvent('pause'); hasPaused = true; }
     stopHeartbeat();
     stopWatchdog();
   });
   audio.addEventListener('waiting', () => { if (!audio.ended) setLoading(true); });
   audio.addEventListener('playing', () => setLoading(false));
   audio.addEventListener('stalled', () => {
-    if (audio.ended) return; // ignore stalled after natural end
+    if (audio.ended) return;
     setLoading(true);
     logEvent('error');
   });
 
-  // ── Watchdog — detect silent stall ───────────────────────────────────
-  // If position hasn't moved in 15s while audio thinks it's playing, flag it.
+  // ── Watchdog ──────────────────────────────────────────────────────────
   let watchdogTimer = null;
   let lastPosition  = 0;
 
@@ -586,21 +391,17 @@
     clearInterval(watchdogTimer);
     lastPosition = audio.currentTime;
     watchdogTimer = setInterval(() => {
-      // Don't check while page is hidden or track has ended
       if (document.visibilityState === 'hidden' || audio.ended) {
         lastPosition = audio.currentTime;
         return;
       }
       if (!audio.paused && audio.currentTime === lastPosition && currentTrack) {
-        // Position frozen while page is visible — genuine stall
         console.log('Watchdog: stall detected at', audio.currentTime);
         setLoading(true);
         showPause(false);
         logEvent('error');
         stopHeartbeat();
         clearInterval(watchdogTimer);
-
-        // Attempt reconnect from same position
         const pos = audio.currentTime;
         audio.src = `${WORKER}/audio/${currentTrack.r2_key}?t=${encodeURIComponent(token)}`;
         audio.load();
@@ -610,9 +411,7 @@
           showPause(true);
           startHeartbeat();
           resetWatchdog();
-        }).catch(() => {
-          setLoading(false);
-        });
+        }).catch(() => { setLoading(false); });
       }
       lastPosition = audio.currentTime;
     }, 15000);
@@ -624,22 +423,18 @@
   }
 
   document.addEventListener('visibilitychange', () => {
-    if (!currentTrack || audio.ended) return; // ignore after track ends
+    if (!currentTrack || audio.ended) return;
     if (document.visibilityState === 'hidden') {
       logEvent('background');
     } else {
       lastPosition = audio.currentTime;
-      if (!audio.paused) {
-        logEvent('foreground');
-        resetWatchdog();
-      }
+      if (!audio.paused) { logEvent('foreground'); resetWatchdog(); }
     }
   });
 
-  // ── Helpers ───────────────────────────────────────────────────────────
   function showPause(on) {
-    $('icon-play').style.display  = on ? 'none'  : '';
-    $('icon-pause').style.display = on ? ''      : 'none';
+    $('icon-play').style.display  = on ? 'none' : '';
+    $('icon-pause').style.display = on ? ''     : 'none';
   }
 
   function setLoading(on) {
