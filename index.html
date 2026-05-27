@@ -308,7 +308,6 @@
   let sessionId    = newSessionId();
   let wasPlaying   = false;
   let hasPaused    = false;
-  let isSwitchingBlob = false;
   let heartbeatTimer = null;
   const HEARTBEAT_MS = 30000;
 
@@ -400,24 +399,22 @@
   }
 
   // ── Play a track ──────────────────────────────────────────────────────
-  let currentBlobUrl = null;  // Tracks active blob URL for cleanup
-  let fetchController = null; // Allows cancelling in-progress background fetch
+  let currentBlobUrl = null;
+  let fetchController = null;
 
   function playTrack(track, el) {
     document.querySelectorAll('.track-item').forEach(d => d.classList.remove('active'));
     if (el) el.classList.add('active');
 
-    currentTrack = track;
-    sessionId    = newSessionId();
-    wasPlaying   = false;
-    hasPaused    = false;
-    isSwitchingBlob = false;
+    currentTrack    = track;
+    sessionId       = newSessionId();
+    wasPlaying      = false;
+    hasPaused       = false;
     stopHeartbeat();
     stopWatchdog();
 
-    // Cancel any previous background fetch (blob mode only)
+    // Cancel any previous fetch and release previous blob
     if (fetchController) { fetchController.abort(); fetchController = null; }
-    // Release previous blob URL from memory
     if (currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
 
     $('now-playing').textContent = track.title;
@@ -426,73 +423,50 @@
 
     const audioUrl = `${WORKER}/audio/${track.r2_key}?t=${encodeURIComponent(token)}`;
 
-    // Start streaming immediately so audio plays right away
-    audio.src = audioUrl;
-    audio.load();
-
-    const playPromise = audio.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(() => {
-        audio.addEventListener('canplay', function onRetry() {
-          audio.removeEventListener('canplay', onRetry);
-          audio.play().catch(() => {});
-        }, { once: true });
-      });
-    }
-
-    // ── Background fetch (blob mode only) ───────────────────────────────
-    // Downloads the full file in background, then switches audio to blob URL.
-    // Result: no B2 connection timeouts, works offline after download completes.
     if (DOWNLOAD_MODE === 'blob') {
+      // Download full file first, then play from blob — clean single source, no switching
       fetchController = new AbortController();
-      const signal = fetchController.signal;
-
-      fetch(audioUrl, { signal })
+      fetch(audioUrl, { signal: fetchController.signal })
         .then(res => {
           if (!res.ok) throw new Error('Fetch failed');
           return res.blob();
         })
         .then(blob => {
-          if (signal.aborted) return;
-          if (audio.ended || !currentTrack) return;
+          if (fetchController?.signal.aborted) return;
           const blobUrl = URL.createObjectURL(blob);
           currentBlobUrl = blobUrl;
-          const pos     = audio.currentTime;
-          const playing = !audio.paused;
-          isSwitchingBlob = true;
           audio.src = blobUrl;
-          // Wait for browser to fully parse blob duration before seeking
-          audio.addEventListener('canplaythrough', function onReady() {
-            audio.removeEventListener('canplaythrough', onReady);
-            audio.currentTime = pos;
-            if (playing) audio.play().catch(() => {});
-            setTimeout(() => { isSwitchingBlob = false; }, 500);
-          }, { once: true });
+          audio.load();
+          const playPromise = audio.play();
+          if (playPromise !== undefined) {
+            playPromise.catch(() => {
+              audio.addEventListener('canplay', function onRetry() {
+                audio.removeEventListener('canplay', onRetry);
+                audio.play().catch(() => {});
+              }, { once: true });
+            });
+          }
         })
         .catch(err => {
           if (err.name !== 'AbortError') {
-            console.warn('Background fetch failed, continuing from stream:', err);
+            console.warn('Blob fetch failed, falling back to stream:', err);
+            startStream(audioUrl);
           }
         });
+    } else {
+      startStream(audioUrl);
     }
 
-    // ── Media Session API ─────────────────────────────────────────────
+    // Media Session API
     if ('mediaSession' in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({
         title:  track.title,
         artist: 'Audio Platform',
         album:  '',
       });
-      navigator.mediaSession.setActionHandler('play', () => {
-        audio.play().catch(() => {});
-      });
-      navigator.mediaSession.setActionHandler('pause', () => {
-        audio.pause();
-      });
-      navigator.mediaSession.setActionHandler('stop', () => {
-        audio.pause();
-        logEvent('end');
-      });
+      navigator.mediaSession.setActionHandler('play',  () => { audio.play().catch(() => {}); });
+      navigator.mediaSession.setActionHandler('pause', () => { audio.pause(); });
+      navigator.mediaSession.setActionHandler('stop',  () => { audio.pause(); logEvent('end'); });
     }
 
     audio.addEventListener('canplay', function onCanPlay() {
@@ -506,6 +480,20 @@
       $('btn-play').disabled = false;
       setLoading(false);
     }, { once: true });
+  }
+
+  function startStream(audioUrl) {
+    audio.src = audioUrl;
+    audio.load();
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        audio.addEventListener('canplay', function onRetry() {
+          audio.removeEventListener('canplay', onRetry);
+          audio.play().catch(() => {});
+        }, { once: true });
+      });
+    }
   }
 
   // ── Play/Pause button ─────────────────────────────────────────────────
@@ -553,7 +541,6 @@
   // ── Audio events ──────────────────────────────────────────────────────
   audio.addEventListener('play', () => {
     showPause(true);
-    if (isSwitchingBlob) return; // blob switch — don't log
     if (!wasPlaying) {
       logEvent('start');
       wasPlaying = true;
