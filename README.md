@@ -1,6 +1,6 @@
 # tracks-player
 
-Frontend audio player for the Audio Streaming Platform. A single-page HTML/JS application hosted on GitHub Pages.
+Frontend audio player for the **Azreon Tracks Platform** (audio streaming research tool). A single-page HTML/JS application hosted on GitHub Pages.
 
 ---
 
@@ -10,7 +10,7 @@ A mobile-friendly web player that:
 - Authenticates users via email OTP (one-time password)
 - Shows each user their permitted audio tracks
 - Streams audio securely via the Cloudflare Worker backend
-- Logs every play event (start, pause, resume, end, heartbeat) for research compliance
+- Logs every play event (start, pause, resume, end, heartbeat, error, background, foreground) for research compliance
 - Works on any browser, any device — no app install required
 
 All backend logic (auth, streaming, access control, logging) lives in the [audio-worker](https://github.com/azreon-lab1/audio-worker) repository.
@@ -34,7 +34,7 @@ GitHub Pages (this repo — index.html)
      ↓
 Cloudflare Worker (audio-worker)
      ↓
-Cloudflare R2 (audio files) + D1 (database)
+Backblaze B2 (audio files) + Cloudflare D1 (database)
 ```
 
 1. User opens the URL on their phone
@@ -42,7 +42,7 @@ Cloudflare R2 (audio files) + D1 (database)
 3. Enters code → receives a session token (valid 93 days)
 4. Token stored in `localStorage` — no re-login needed on return visits
 5. Track list loads — only tracks permitted for that user
-6. Tap a track → audio streams directly from Cloudflare R2
+6. Tap a track → audio streams via the Worker from Backblaze B2 (downloads full file as a blob in the background for gapless playback)
 7. All play events logged to D1 with UTC millisecond timestamps
 
 ---
@@ -60,13 +60,21 @@ tracks-player/
 
 ## Configuration
 
-The only thing that needs updating when deploying to a new environment is the `WORKER` constant at the top of the `<script>` section in `index.html`:
+Configuration lives at the top of the `<script>` section in `index.html`:
 
 ```javascript
-const WORKER = 'https://audio-worker.azreon.workers.dev';
+const WORKER = 'https://audio-worker.azreon.workers.dev';  // Worker URL
+const DOWNLOAD_MODE = 'blob';   // 'blob' (download then gapless) or 'stream'
+const LOG_HEARTBEAT = true;     // set false to suppress heartbeat logs
+
+const UI = {                    // all labels and text — edit to rebrand
+  PLATFORM_NAME:   'Azreon Tracks Platform',
+  PLATFORM_ARTIST: 'Azreon Tracks Platform',
+  // ... etc
+};
 ```
 
-Replace with your Cloudflare Worker URL.
+**End detection:** The player uses the `timeupdate` event (fires ~4x/sec while playing) as the primary track-end detector, with the native `ended` event as backup. This is reliable even when the screen is locked, because the blob's `ended` event does not fire reliably on mobile browsers.
 
 ---
 
