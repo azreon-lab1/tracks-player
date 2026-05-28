@@ -115,6 +115,24 @@
 <script>
   const WORKER = 'https://audio-worker.azreon.workers.dev';
 
+  // ── UI constants — edit these to customise labels and text ───────────
+  const UI = {
+    PLATFORM_NAME:      'Audio Platform',
+    PLATFORM_ARTIST:    'Audio Platform',   // shown on lock screen
+    PAGE_TITLE:         'Audio Platform',
+    AUTH_SUBTITLE:      'Enter your email to receive an access code.',
+    EMAIL_PLACEHOLDER:  'your@email.com',
+    SEND_CODE_BTN:      'Send Code',
+    OTP_TITLE:          'Enter Your Code',
+    OTP_SUBTITLE:       'Check your email for the 6-digit code.',
+    VERIFY_BTN:         'Verify',
+    BACK_BTN:           'Back',
+    LOGOUT_BTN:         'Log Out',
+    NOW_PLAYING_IDLE:   'Select a track below',
+    NO_TRACKS_MSG:      'No tracks available.',
+    LOADING_TEXT:       'Loading\u2026',
+  };
+
   // 'blob'   → streams immediately + downloads full file in background.
   //            When blob ready (and >30s remaining), switches cleanly to blob.
   //            No B2 timeouts, works offline after download. Recommended.
@@ -132,12 +150,29 @@
 
   // Set to false to suppress heartbeat events from logs (reduces noise)
   // Heartbeats still fire internally — only logging is suppressed
-  const LOG_HEARTBEAT = false;
+  const LOG_HEARTBEAT = true;
 
   const audio = new Audio();
   audio.preload = 'auto';
 
   const $ = id => document.getElementById(id);
+
+  // Apply UI constants to DOM
+  document.title                                    = UI.PAGE_TITLE;
+  document.querySelector('h1')                      && (document.querySelector('h1').textContent = UI.PLATFORM_NAME);
+  document.querySelectorAll('h1')[1]                && (document.querySelectorAll('h1')[1].textContent = UI.OTP_TITLE);
+  $('send-btn').textContent                         = UI.SEND_CODE_BTN;
+  $('verify-btn').textContent                       = UI.VERIFY_BTN;
+  $('back-btn').textContent                         = UI.BACK_BTN;
+  $('logout-btn').textContent                       = UI.LOGOUT_BTN;
+  $('now-playing').textContent                      = UI.NOW_PLAYING_IDLE;
+  $('loading-label').textContent                    = UI.LOADING_TEXT;
+  $('email-input').placeholder                      = UI.EMAIL_PLACEHOLDER;
+  document.querySelector('.startup-label').textContent = UI.LOADING_TEXT;
+  // Auth subtitles
+  const subtitles = document.querySelectorAll('#auth-section p, #otp-section p');
+  if (subtitles[0]) subtitles[0].textContent = UI.AUTH_SUBTITLE;
+  if (subtitles[1]) subtitles[1].textContent = UI.OTP_SUBTITLE;
 
   if (token) {
     loadPlayer();
@@ -203,7 +238,7 @@
     const list = $('track-list');
     list.innerHTML = '';
     if (!data.tracks || data.tracks.length === 0) {
-      list.innerHTML = '<p style="color:#888;padding:14px;text-align:center">No tracks available.</p>';
+      list.innerHTML = `<p style="color:#888;padding:14px;text-align:center">${UI.NO_TRACKS_MSG}</p>`;
       return;
     }
     data.tracks.forEach(track => {
@@ -299,7 +334,7 @@
 
     if ('mediaSession' in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: track.title, artist: 'Audio Platform', album: '',
+        title: track.title, artist: UI.PLATFORM_ARTIST, album: '',
       });
       navigator.mediaSession.setActionHandler('play',  () => { audio.play().catch(() => {}); });
       navigator.mediaSession.setActionHandler('pause', () => { audio.pause(); });
@@ -363,6 +398,7 @@
     stopHeartbeat();
     stopWatchdog();
     wasPlaying = false;
+    $('now-playing').textContent = UI.NOW_PLAYING_IDLE;
     $('progress-played').style.width = '0%';
     $('progress-thumb').style.left   = '0%';
   });
