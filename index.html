@@ -145,6 +145,7 @@
   let wasPlaying      = false;
   let hasPaused       = false;
   let isSwitchingBlob = false;
+  let hasStartedPlaying = false;  // true after canplaythrough fires on initial load
   let heartbeatTimer  = null;
   const HEARTBEAT_MS  = 30000;
 
@@ -265,6 +266,7 @@
     wasPlaying      = false;
     hasPaused       = false;
     isSwitchingBlob = false;
+    hasStartedPlaying = false;
     stopHeartbeat();
     stopWatchdog();
 
@@ -274,6 +276,9 @@
     $('now-playing').textContent = track.title;
     $('btn-play').disabled = true;
     setLoading(true);
+
+    // Disable track list while loading — prevents multiple taps firing multiple sessions
+    document.querySelectorAll('.track-item').forEach(d => d.style.pointerEvents = 'none');
 
     const audioUrl = `${WORKER}/audio/${track.r2_key}?t=${encodeURIComponent(token)}`;
 
@@ -286,6 +291,9 @@
       audio.removeEventListener('canplaythrough', onCanPlay);
       $('btn-play').disabled = false;
       setLoading(false);
+      hasStartedPlaying = true;
+      // Re-enable track list
+      document.querySelectorAll('.track-item').forEach(d => d.style.pointerEvents = '');
       audio.play().catch(() => {});
     }, { once: true });
 
@@ -293,6 +301,8 @@
       audio.removeEventListener('error', onErr);
       $('btn-play').disabled = false;
       setLoading(false);
+      // Re-enable track list on error too
+      document.querySelectorAll('.track-item').forEach(d => d.style.pointerEvents = '');
     }, { once: true });
 
     // Background blob download — switches to blob when ready
@@ -308,6 +318,7 @@
         .then(blob => {
           if (signal.aborted) return;
           if (audio.ended || !currentTrack) return;
+          if (!hasStartedPlaying) return;  // don't switch before initial canplaythrough fired
           // Don't switch if less than 30s remaining — stay on stream, ended fires reliably
           const remaining = isFinite(audio.duration) ? audio.duration - audio.currentTime : 999;
           if (remaining < 30) return;
