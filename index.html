@@ -502,9 +502,22 @@
     $('icon-pause').style.display = on ? ''     : 'none';
   }
 
+  let loadingDelayTimer = null;
   function setLoading(on) {
-    $('progress-loading').classList.toggle('active', on);
-    $('loading-label').classList.toggle('active', on);
+    if (on) {
+      // Delay showing the loader — prevents flicker from brief waiting events
+      if (loadingDelayTimer) return;
+      loadingDelayTimer = setTimeout(() => {
+        $('progress-loading').classList.add('active');
+        $('loading-label').classList.add('active');
+        loadingDelayTimer = null;
+      }, 400);
+    } else {
+      // Cancel any pending show, and hide immediately
+      if (loadingDelayTimer) { clearTimeout(loadingDelayTimer); loadingDelayTimer = null; }
+      $('progress-loading').classList.remove('active');
+      $('loading-label').classList.remove('active');
+    }
   }
 
   function fmt(s) {
