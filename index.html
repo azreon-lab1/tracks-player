@@ -151,7 +151,7 @@
 
   // Set to false to suppress heartbeat events from logs (reduces noise)
   // Heartbeats still fire internally — only logging is suppressed
-  const LOG_HEARTBEAT = false;
+  const LOG_HEARTBEAT = true;
 
   const audio = new Audio();
   audio.preload = 'auto';
@@ -335,24 +335,6 @@
             audio.currentTime = pos;
             if (playing) audio.play().catch(() => {});
             setTimeout(() => { isSwitchingBlob = false; }, 500);
-
-            // Add explicit ended listener for blob — belt and braces
-            // Some mobile browsers don't fire ended on blob URLs reliably
-            audio.addEventListener('ended', function onBlobEnded() {
-              audio.removeEventListener('ended', onBlobEnded);
-              // The permanent ended handler will also fire — guard against double-logging
-              if (wasPlaying) {
-                logEvent('end');
-                showPause(false);
-                stopHeartbeat();
-                stopWatchdog();
-                wasPlaying = false;
-                $('now-playing').textContent = UI.NOW_PLAYING_IDLE;
-                $('progress-played').style.width = '0%';
-                $('progress-thumb').style.left   = '0%';
-                document.querySelectorAll('.track-item').forEach(d => d.style.pointerEvents = '');
-              }
-            }, { once: true });
           }, { once: true });
         })
         .catch(err => {
@@ -367,7 +349,7 @@
       });
       navigator.mediaSession.setActionHandler('play',  () => { audio.play().catch(() => {}); });
       navigator.mediaSession.setActionHandler('pause', () => { audio.pause(); });
-      navigator.mediaSession.setActionHandler('stop',  () => { audio.pause(); logEvent('end'); });
+      navigator.mediaSession.setActionHandler('stop',  () => { audio.pause(); });
     }
   }
 
@@ -407,6 +389,25 @@
     audio.currentTime = pct * audio.duration;
   });
 
+  // ── Single source of truth for track completion ───────────────────────
+  // Called by both the native 'ended' event and 'timeupdate' (which fires
+  // continuously while playing, including when screen is locked since JS
+  // stays alive). The native 'ended' event does not fire reliably on blob
+  // URLs on mobile, so timeupdate is the reliable detector. wasPlaying acts
+  // as a mutex so end is logged exactly once.
+  function handleTrackEnd() {
+    if (!wasPlaying) return;
+    wasPlaying = false;
+    logEvent('end');
+    showPause(false);
+    stopHeartbeat();
+    stopWatchdog();
+    $('now-playing').textContent = UI.NOW_PLAYING_IDLE;
+    $('progress-played').style.width = '0%';
+    $('progress-thumb').style.left   = '0%';
+    document.querySelectorAll('.track-item').forEach(d => d.style.pointerEvents = '');
+  }
+
   // ── Audio events ──────────────────────────────────────────────────────
   audio.addEventListener('play', () => {
     showPause(true);
@@ -421,18 +422,18 @@
     startHeartbeat();
     resetWatchdog();
   });
-  audio.addEventListener('ended', () => {
-    if (!wasPlaying) return; // already handled by blob ended callback or previous call
-    showPause(false);
-    logEvent('end');
-    stopHeartbeat();
-    stopWatchdog();
-    wasPlaying = false;
-    $('now-playing').textContent = UI.NOW_PLAYING_IDLE;
-    $('progress-played').style.width = '0%';
-    $('progress-thumb').style.left   = '0%';
-    document.querySelectorAll('.track-item').forEach(d => d.style.pointerEvents = '');
+
+  // timeupdate fires ~4x/sec while playing — the reliable end detector
+  audio.addEventListener('timeupdate', () => {
+    if (wasPlaying && !isSwitchingBlob && isFinite(audio.duration) && audio.duration > 0
+        && audio.currentTime >= audio.duration - 0.25) {
+      handleTrackEnd();
+    }
   });
+
+  // Native ended — fires when screen is on; backup to timeupdate
+  audio.addEventListener('ended', handleTrackEnd);
+
   audio.addEventListener('pause', () => {
     showPause(false);
     if (!audio.ended) { logEvent('pause'); hasPaused = true; }
