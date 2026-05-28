@@ -150,7 +150,7 @@
 
   // Set to false to suppress heartbeat events from logs (reduces noise)
   // Heartbeats still fire internally — only logging is suppressed
-  const LOG_HEARTBEAT = false;
+  const LOG_HEARTBEAT = true;
 
   const audio = new Audio();
   audio.preload = 'auto';
@@ -277,13 +277,13 @@
 
     const audioUrl = `${WORKER}/audio/${track.r2_key}?t=${encodeURIComponent(token)}`;
 
-    // Load first — wait for canplay before playing
-    // This gives the decoder time to initialise cleanly, preventing click/pop artefacts
+    // Load first — wait for canplaythrough before playing
+    // canplaythrough fires after decoder is fully initialised — prevents click/pop noise
     audio.src = audioUrl;
     audio.load();
 
-    audio.addEventListener('canplay', function onCanPlay() {
-      audio.removeEventListener('canplay', onCanPlay);
+    audio.addEventListener('canplaythrough', function onCanPlay() {
+      audio.removeEventListener('canplaythrough', onCanPlay);
       $('btn-play').disabled = false;
       setLoading(false);
       audio.play().catch(() => {});
