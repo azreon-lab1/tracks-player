@@ -335,6 +335,24 @@
             audio.currentTime = pos;
             if (playing) audio.play().catch(() => {});
             setTimeout(() => { isSwitchingBlob = false; }, 500);
+
+            // Add explicit ended listener for blob — belt and braces
+            // Some mobile browsers don't fire ended on blob URLs reliably
+            audio.addEventListener('ended', function onBlobEnded() {
+              audio.removeEventListener('ended', onBlobEnded);
+              // The permanent ended handler will also fire — guard against double-logging
+              if (wasPlaying) {
+                logEvent('end');
+                showPause(false);
+                stopHeartbeat();
+                stopWatchdog();
+                wasPlaying = false;
+                $('now-playing').textContent = UI.NOW_PLAYING_IDLE;
+                $('progress-played').style.width = '0%';
+                $('progress-thumb').style.left   = '0%';
+                document.querySelectorAll('.track-item').forEach(d => d.style.pointerEvents = '');
+              }
+            }, { once: true });
           }, { once: true });
         })
         .catch(err => {
@@ -404,6 +422,7 @@
     resetWatchdog();
   });
   audio.addEventListener('ended', () => {
+    if (!wasPlaying) return; // already handled by blob ended callback or previous call
     showPause(false);
     logEvent('end');
     stopHeartbeat();
@@ -412,6 +431,7 @@
     $('now-playing').textContent = UI.NOW_PLAYING_IDLE;
     $('progress-played').style.width = '0%';
     $('progress-thumb').style.left   = '0%';
+    document.querySelectorAll('.track-item').forEach(d => d.style.pointerEvents = '');
   });
   audio.addEventListener('pause', () => {
     showPause(false);
