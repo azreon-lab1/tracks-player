@@ -52,6 +52,39 @@
     .startup-bar::after { content: ''; display: block; height: 100%; width: 40%; background: #d4a843; border-radius: 2px; animation: slide 1.2s ease-in-out infinite; }
     @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }
     .startup-label { font-size: .85rem; color: rgba(255,255,255,0.7); }
+    /* Playback mode toggle */
+    .mode-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      margin-top: 14px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .mode-toggle button {
+      flex: 1;
+      padding: 8px 12px;
+      background: #fff;
+      border: none;
+      font-size: .82rem;
+      color: #555;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+    .mode-toggle button.active {
+      background: #1A4F8A;
+      color: #fff;
+      font-weight: 600;
+    }
+    .mode-toggle button:not(.active):hover { background: #f0f4ff; }
+    .mode-hint {
+      font-size: .72rem;
+      color: #999;
+      text-align: center;
+      margin-top: 6px;
+    }
   </style>
 </head>
 <body>
@@ -103,6 +136,11 @@
           <div class="progress-thumb"   id="progress-thumb"></div>
         </div>
         <div class="loading-label" id="loading-label">Loading…</div>
+        <div class="mode-toggle" id="mode-toggle">
+          <button id="mode-blob"   onclick="setMode('blob')">Preload</button>
+          <button id="mode-stream" onclick="setMode('stream')">Stream</button>
+        </div>
+        <div class="mode-hint" id="mode-hint"></div>
       </div>
     </div>
     <div class="card">
@@ -120,6 +158,7 @@
     PLATFORM_NAME:      'Azreon Tracks Platform',
     PLATFORM_ARTIST:    'Azreon Tracks Platform',   // shown on lock screen
     PAGE_TITLE:         'Azreon Tracks Platform',
+    AUTH_TITLE:         'Authentication Step',       // heading on the email/code screen
     AUTH_SUBTITLE:      'Enter your email to receive an access code.',
     EMAIL_PLACEHOLDER:  'your@email.com',
     SEND_CODE_BTN:      'Send Code',
@@ -131,13 +170,25 @@
     NOW_PLAYING_IDLE:   'Select a track below',
     NO_TRACKS_MSG:      'No tracks available.',
     LOADING_TEXT:       'Loading\u2026',
+    MODE_BLOB_LABEL:    'Preload',
+    MODE_STREAM_LABEL:  'Stream',
+    MODE_BLOB_HINT:     'Downloads the full track first, then plays. Works offline once loaded.',
+    MODE_STREAM_HINT:   'Plays immediately, streams as you listen. Needs a connection throughout.',
   };
 
-  // 'blob'   → streams immediately + downloads full file in background.
-  //            When blob ready (and >30s remaining), switches cleanly to blob.
-  //            No B2 timeouts, works offline after download. Recommended.
-  // 'stream' → streams directly, no background download.
-  const DOWNLOAD_MODE = 'blob';
+  // ── Playback modes ───────────────────────────────────────────────────
+  // 'blob'   → downloads the full file first, then plays. No glitches,
+  //            works offline once loaded. (Default, user-selectable)
+  // 'stream' → plays immediately, streams as you go. (User-selectable)
+  // 'hybrid' → streams immediately + swaps to blob mid-play. Has a small
+  //            audible blip at the switch. NOT offered in the UI — set here
+  //            only if you explicitly want it.
+  const DEFAULT_MODE = 'blob';
+
+  // Active mode: persisted user choice, falling back to default.
+  // 'hybrid' can only be set via DEFAULT_MODE, never persisted from UI.
+  let activeMode = localStorage.getItem('ap_mode') || DEFAULT_MODE;
+  if (DEFAULT_MODE === 'hybrid') activeMode = 'hybrid'; // constant overrides
 
   let token           = localStorage.getItem('ap_token');
   let currentTrack    = null;
@@ -160,8 +211,8 @@
 
   // Apply UI constants to DOM
   document.title                                    = UI.PAGE_TITLE;
-  document.querySelector('h1')                      && (document.querySelector('h1').textContent = UI.PLATFORM_NAME);
-  document.querySelectorAll('h1')[1]                && (document.querySelectorAll('h1')[1].textContent = UI.OTP_TITLE);
+  document.querySelector('#auth-section h1')        && (document.querySelector('#auth-section h1').textContent = UI.AUTH_TITLE);
+  document.querySelector('#otp-section h1')         && (document.querySelector('#otp-section h1').textContent = UI.OTP_TITLE);
   $('send-btn').textContent                         = UI.SEND_CODE_BTN;
   $('verify-btn').textContent                       = UI.VERIFY_BTN;
   $('back-btn').textContent                         = UI.BACK_BTN;
@@ -174,6 +225,7 @@
   const subtitles = document.querySelectorAll('#auth-section p, #otp-section p');
   if (subtitles[0]) subtitles[0].textContent = UI.AUTH_SUBTITLE;
   if (subtitles[1]) subtitles[1].textContent = UI.OTP_SUBTITLE;
+  syncModeUI();
 
   if (token) {
     loadPlayer();
@@ -282,65 +334,43 @@
 
     const audioUrl = `${WORKER}/audio/${track.r2_key}?t=${encodeURIComponent(token)}`;
 
-    // Load first — wait for canplaythrough before playing
-    // canplaythrough fires after decoder is fully initialised — prevents click/pop noise
-    audio.src = audioUrl;
-    audio.load();
-
-    audio.addEventListener('canplaythrough', function onCanPlay() {
-      audio.removeEventListener('canplaythrough', onCanPlay);
-      $('btn-play').disabled = false;
-      setLoading(false);
-      hasStartedPlaying = true;
-      // Re-enable track list
-      document.querySelectorAll('.track-item').forEach(d => d.style.pointerEvents = '');
-      audio.play().catch(() => {});
-    }, { once: true });
-
-    audio.addEventListener('error', function onErr() {
-      audio.removeEventListener('error', onErr);
-      $('btn-play').disabled = false;
-      setLoading(false);
-      // Re-enable track list on error too
-      document.querySelectorAll('.track-item').forEach(d => d.style.pointerEvents = '');
-    }, { once: true });
-
-    // Background blob download — switches to blob when ready
-    if (DOWNLOAD_MODE === 'blob') {
+    // ── BLOB mode: download the full file first, then play from blob ──────
+    // No source switching, no glitch. Works offline once loaded.
+    if (activeMode === 'blob') {
       fetchController = new AbortController();
-      const signal = fetchController.signal;
-
-      fetch(audioUrl, { signal })
-        .then(res => {
-          if (!res.ok) throw new Error('Fetch failed');
-          return res.blob();
-        })
+      fetch(audioUrl, { signal: fetchController.signal })
+        .then(res => { if (!res.ok) throw new Error('Fetch failed'); return res.blob(); })
         .then(blob => {
-          if (signal.aborted) return;
-          if (audio.ended || !currentTrack) return;
-          if (!hasStartedPlaying) return;  // don't switch before initial canplaythrough fired
-          // Don't switch if less than 30s remaining — stay on stream, ended fires reliably
-          const remaining = isFinite(audio.duration) ? audio.duration - audio.currentTime : 999;
-          if (remaining < 30) return;
+          if (fetchController?.signal.aborted || currentTrack !== track) return;
           const blobUrl = URL.createObjectURL(blob);
           currentBlobUrl = blobUrl;
-          const pos     = audio.currentTime;
-          const playing = !audio.paused;
-          isSwitchingBlob = true;
           audio.src = blobUrl;
-          // canplay fires as soon as duration is known — ensures ended fires correctly
-          audio.addEventListener('canplay', function onBlobReady() {
-            audio.removeEventListener('canplay', onBlobReady);
-            if (!currentTrack || audio.ended) return;
-            audio.currentTime = pos;
-            if (playing) audio.play().catch(() => {});
-            setTimeout(() => { isSwitchingBlob = false; }, 500);
-          }, { once: true });
+          audio.load();
+          startInitialPlayback();
         })
         .catch(err => {
-          if (err.name !== 'AbortError')
-            console.warn('Background fetch failed, continuing from stream:', err);
+          if (err.name !== 'AbortError') {
+            console.warn('Blob download failed, falling back to stream:', err);
+            audio.src = audioUrl;
+            audio.load();
+            startInitialPlayback();
+          }
         });
+    }
+
+    // ── STREAM mode: play directly from the stream, no download ───────────
+    else if (activeMode === 'stream') {
+      audio.src = audioUrl;
+      audio.load();
+      startInitialPlayback();
+    }
+
+    // ── HYBRID mode: stream now, swap to blob mid-play (has a blip) ───────
+    else {
+      audio.src = audioUrl;
+      audio.load();
+      startInitialPlayback();
+      hybridBlobSwitch(audioUrl, track);
     }
 
     if ('mediaSession' in navigator) {
@@ -351,6 +381,56 @@
       navigator.mediaSession.setActionHandler('pause', () => { audio.pause(); });
       navigator.mediaSession.setActionHandler('stop',  () => { audio.pause(); });
     }
+  }
+
+  // Wait for the audio to be ready, then start playback cleanly
+  function startInitialPlayback() {
+    audio.addEventListener('canplaythrough', function onCanPlay() {
+      audio.removeEventListener('canplaythrough', onCanPlay);
+      $('btn-play').disabled = false;
+      setLoading(false);
+      hasStartedPlaying = true;
+      document.querySelectorAll('.track-item').forEach(d => d.style.pointerEvents = '');
+      audio.play().catch(() => {});
+    }, { once: true });
+
+    audio.addEventListener('error', function onErr() {
+      audio.removeEventListener('error', onErr);
+      $('btn-play').disabled = false;
+      setLoading(false);
+      document.querySelectorAll('.track-item').forEach(d => d.style.pointerEvents = '');
+    }, { once: true });
+  }
+
+  // Hybrid: download blob in background and swap source mid-play
+  function hybridBlobSwitch(audioUrl, track) {
+    fetchController = new AbortController();
+    const signal = fetchController.signal;
+    fetch(audioUrl, { signal })
+      .then(res => { if (!res.ok) throw new Error('Fetch failed'); return res.blob(); })
+      .then(blob => {
+        if (signal.aborted || audio.ended || currentTrack !== track) return;
+        if (!hasStartedPlaying) return;
+        const remaining = isFinite(audio.duration) ? audio.duration - audio.currentTime : 999;
+        if (remaining < 30) return;
+        const blobUrl = URL.createObjectURL(blob);
+        currentBlobUrl = blobUrl;
+        const pos     = audio.currentTime;
+        const playing = !audio.paused;
+        isSwitchingBlob = true;
+        audio.src = blobUrl;
+        audio.addEventListener('canplay', function onBlobReady() {
+          audio.removeEventListener('canplay', onBlobReady);
+          if (!currentTrack || audio.ended) return;
+          audio.currentTime = pos;
+          if (playing) audio.play().catch(() => {});
+          setTimeout(() => { isSwitchingBlob = false; }, 500);
+        }, { once: true });
+      })
+      .catch(err => {
+        if (err.name !== 'AbortError')
+          console.warn('Hybrid blob fetch failed, continuing from stream:', err);
+      });
   }
 
   $('btn-play').onclick = () => {
@@ -500,6 +580,32 @@
   function showPause(on) {
     $('icon-play').style.display  = on ? 'none' : '';
     $('icon-pause').style.display = on ? ''     : 'none';
+  }
+
+  // ── Playback mode toggle ──────────────────────────────────────────────
+  function setMode(mode) {
+    if (mode !== 'blob' && mode !== 'stream') return; // hybrid is constant-only
+    activeMode = mode;
+    localStorage.setItem('ap_mode', mode);
+    syncModeUI();
+  }
+
+  function syncModeUI() {
+    const toggle = $('mode-toggle');
+    const hint   = $('mode-hint');
+    if (!toggle) return;
+    // Hybrid is not user-selectable — hide the toggle entirely if active
+    if (activeMode === 'hybrid') {
+      toggle.style.display = 'none';
+      if (hint) hint.textContent = '';
+      return;
+    }
+    toggle.style.display = 'flex';
+    $('mode-blob').classList.toggle('active', activeMode === 'blob');
+    $('mode-stream').classList.toggle('active', activeMode === 'stream');
+    $('mode-blob').textContent   = UI.MODE_BLOB_LABEL;
+    $('mode-stream').textContent = UI.MODE_STREAM_LABEL;
+    if (hint) hint.textContent = activeMode === 'blob' ? UI.MODE_BLOB_HINT : UI.MODE_STREAM_HINT;
   }
 
   let loadingDelayTimer = null;
