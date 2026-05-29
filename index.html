@@ -58,7 +58,6 @@
       align-items: center;
       justify-content: center;
       gap: 0;
-      margin-top: 14px;
       border: 1px solid #ddd;
       border-radius: 8px;
       overflow: hidden;
@@ -136,18 +135,26 @@
           <div class="progress-thumb"   id="progress-thumb"></div>
         </div>
         <div class="loading-label" id="loading-label">Loading…</div>
-        <div class="mode-toggle" id="mode-toggle">
-          <button id="mode-blob"   onclick="setMode('blob')">Preload</button>
-          <button id="mode-stream" onclick="setMode('stream')">Stream</button>
-        </div>
-        <div class="mode-hint" id="mode-hint"></div>
+        <div id="mode-slot-player"></div>
       </div>
     </div>
     <div class="card">
       <div id="track-list"></div>
     </div>
+    <div class="card" id="mode-card-bottom">
+      <div id="mode-slot-bottom"></div>
+    </div>
     <button class="secondary" id="logout-btn">Log Out</button>
   </div>
+
+  <!-- Mode toggle template — injected into the chosen slot on load -->
+  <template id="mode-toggle-template">
+    <div class="mode-toggle" id="mode-toggle">
+      <button id="mode-blob"   onclick="setMode('blob')">Preload</button>
+      <button id="mode-stream" onclick="setMode('stream')">Stream</button>
+    </div>
+    <div class="mode-hint" id="mode-hint"></div>
+  </template>
 
 </div>
 <script>
@@ -184,6 +191,11 @@
   //            audible blip at the switch. NOT offered in the UI — set here
   //            only if you explicitly want it.
   const DEFAULT_MODE = 'blob';
+
+  // Where to show the playback mode toggle:
+  // 'player' → inside the player card, with the controls
+  // 'bottom' → in its own card below the track list, above Log Out
+  const MODE_TOGGLE_POSITION = 'bottom';
 
   // Active mode: persisted user choice, falling back to default.
   // 'hybrid' can only be set via DEFAULT_MODE, never persisted from UI.
@@ -225,6 +237,7 @@
   const subtitles = document.querySelectorAll('#auth-section p, #otp-section p');
   if (subtitles[0]) subtitles[0].textContent = UI.AUTH_SUBTITLE;
   if (subtitles[1]) subtitles[1].textContent = UI.OTP_SUBTITLE;
+  injectModeToggle();
   syncModeUI();
 
   if (token) {
@@ -583,6 +596,22 @@
   }
 
   // ── Playback mode toggle ──────────────────────────────────────────────
+  function injectModeToggle() {
+    const tmpl = $('mode-toggle-template');
+    const slot = MODE_TOGGLE_POSITION === 'player' ? $('mode-slot-player') : $('mode-slot-bottom');
+    if (tmpl && slot) slot.appendChild(tmpl.content.cloneNode(true));
+    // Hide the bottom card entirely if the toggle lives in the player
+    if (MODE_TOGGLE_POSITION === 'player') {
+      const bottomCard = $('mode-card-bottom');
+      if (bottomCard) bottomCard.style.display = 'none';
+    }
+    // Add spacing if it's in the player card
+    if (MODE_TOGGLE_POSITION === 'player') {
+      const t = $('mode-toggle');
+      if (t) t.style.marginTop = '14px';
+    }
+  }
+
   function setMode(mode) {
     if (mode !== 'blob' && mode !== 'stream') return; // hybrid is constant-only
     activeMode = mode;
@@ -593,11 +622,14 @@
   function syncModeUI() {
     const toggle = $('mode-toggle');
     const hint   = $('mode-hint');
+    const bottomCard = $('mode-card-bottom');
     if (!toggle) return;
     // Hybrid is not user-selectable — hide the toggle entirely if active
     if (activeMode === 'hybrid') {
       toggle.style.display = 'none';
       if (hint) hint.textContent = '';
+      // If the toggle was in its own bottom card, hide the empty card
+      if (MODE_TOGGLE_POSITION === 'bottom' && bottomCard) bottomCard.style.display = 'none';
       return;
     }
     toggle.style.display = 'flex';
