@@ -326,9 +326,18 @@
     document.querySelectorAll('.track-item').forEach(d => d.classList.remove('active'));
     if (el) el.classList.add('active');
 
+    // If a track is currently loaded, stop it cleanly and log a 'stop' event
+    // for the OUTGOING track (captured before we overwrite currentTrack).
+    if (currentTrack && wasPlaying) {
+      logEvent('stop');               // logs with the still-current outgoing track + position
+    }
+    wasPlaying = false;               // prevents the pause handler from logging anything
+    audio.pause();
+    audio.removeAttribute('src');
+    audio.load();                     // reset element to a clean state
+
     currentTrack    = track;
     sessionId       = newSessionId();
-    wasPlaying      = false;
     hasPaused       = false;
     isSwitchingBlob = false;
     hasStartedPlaying = false;
@@ -338,6 +347,10 @@
     if (fetchController) { fetchController.abort(); fetchController = null; }
     if (currentBlobUrl)  { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
 
+    showPause(false);
+    $('progress-played').style.width = '0%';
+    $('progress-thumb').style.left   = '0%';
+    $('player-time').textContent     = '0:00 / 0:00';
     $('now-playing').textContent = track.title;
     $('btn-play').disabled = true;
     setLoading(true);
@@ -529,6 +542,7 @@
 
   audio.addEventListener('pause', () => {
     showPause(false);
+    if (!wasPlaying) return;            // nothing actively playing — not a user pause
     if (!audio.ended) { logEvent('pause'); hasPaused = true; }
     stopHeartbeat();
     stopWatchdog();
