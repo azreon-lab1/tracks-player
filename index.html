@@ -212,9 +212,11 @@
   let heartbeatTimer  = null;
   const HEARTBEAT_MS  = 30000;
 
-  // Set to false to suppress heartbeat events from logs (reduces noise)
-  // Heartbeats still fire internally — only logging is suppressed
-  const LOG_HEARTBEAT = true;
+  // Default heartbeat logging. Overridden at runtime by the server setting
+  // 'log_heartbeat' (returned with /tracks), so it can be changed remotely
+  // without redeploying. Heartbeats still fire internally either way —
+  // only the logging is suppressed when false.
+  let LOG_HEARTBEAT = true;
 
   const audio = new Audio();
   audio.preload = 'auto';
@@ -297,6 +299,14 @@
     });
     if (res.status === 401) { logout(); return; }
     const data = await res.json();
+
+    // Apply server-provided settings (changeable remotely, no redeploy)
+    if (data.settings) {
+      if (data.settings.log_heartbeat !== undefined) {
+        LOG_HEARTBEAT = data.settings.log_heartbeat === '1';
+      }
+    }
+
     $('startup-loading').style.display = 'none';
     $('auth-section').style.display    = 'none';
     $('otp-section').style.display     = 'none';
@@ -332,6 +342,10 @@
       logEvent('stop');               // logs with the still-current outgoing track + position
     }
     wasPlaying = false;               // prevents the pause handler from logging anything
+
+    // Mute instantly before tearing down — prevents the click from cutting
+    // audio mid-waveform. We restore (unmute) once the new source is ready.
+    audio.muted = true;
     audio.pause();
     audio.removeAttribute('src');
     audio.load();                     // reset element to a clean state
@@ -417,11 +431,13 @@
       setLoading(false);
       hasStartedPlaying = true;
       document.querySelectorAll('.track-item').forEach(d => d.style.pointerEvents = '');
+      audio.muted = false;            // restore audio for the new track
       audio.play().catch(() => {});
     }, { once: true });
 
     audio.addEventListener('error', function onErr() {
       audio.removeEventListener('error', onErr);
+      audio.muted = false;
       $('btn-play').disabled = false;
       setLoading(false);
       document.querySelectorAll('.track-item').forEach(d => d.style.pointerEvents = '');
