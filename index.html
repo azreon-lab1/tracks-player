@@ -138,7 +138,7 @@
         <div id="mode-slot-player"></div>
       </div>
     </div>
-    <div class="card">
+    <div class="card" id="track-list-card">
       <div id="track-list"></div>
     </div>
     <div class="card" id="mode-card-bottom">
@@ -176,6 +176,7 @@
     LOGOUT_BTN:         'Log Out',
     NOW_PLAYING_IDLE:   'Select a track below',
     NO_TRACKS_MSG:      'No tracks available.',
+    TRACK_NOT_AVAILABLE:'That track isn\u2019t available on your account.',
     LOADING_TEXT:       'Loading\u2026',
     MODE_BLOB_LABEL:    'Preload',
     MODE_STREAM_LABEL:  'Stream',
@@ -197,6 +198,12 @@
   // 'bottom' → in its own card below the track list, above Log Out
   const MODE_TOGGLE_POSITION = 'bottom';
 
+  // When opened via a direct track link (?track=T1), hide the track list and
+  // mode toggle for a focused single-track experience (ideal for widgets).
+  // true  → direct links show only the player
+  // false → direct links auto-play but still show the full track list
+  const SINGLE_TRACK_HIDES_LIST = true;
+
   // Active mode: persisted user choice, falling back to default.
   // 'hybrid' can only be set via DEFAULT_MODE, never persisted from UI.
   let activeMode = localStorage.getItem('ap_mode') || DEFAULT_MODE;
@@ -211,6 +218,10 @@
   let hasStartedPlaying = false;  // true after canplaythrough fires on initial load
   let heartbeatTimer  = null;
   const HEARTBEAT_MS  = 30000;
+
+  // Direct track link: ?track=T1 in the URL → auto-play that track once loaded.
+  // Survives the login flow (stored until the track list is available).
+  let pendingTrackCode = new URLSearchParams(location.search).get('track');
 
   // Default heartbeat logging. Overridden at runtime by the server setting
   // 'log_heartbeat' (returned with /tracks), so it can be changed remotely
@@ -321,11 +332,39 @@
       const div = document.createElement('div');
       div.className = 'track-item';
       div.dataset.trackId = track.id;
+      div.dataset.trackCode = track.track_code;
       div.innerHTML = `<div class="track-title">${track.title}</div>` +
         (track.duration ? `<div class="track-duration">${track.duration}</div>` : '');
       div.onclick = () => playTrack(track, div);
       list.appendChild(div);
     });
+
+    // Direct track link: if the URL requested a specific track (?track=T1),
+    // auto-play it now that the list is loaded. Runs once per page load.
+    if (pendingTrackCode) {
+      const code = pendingTrackCode;
+      pendingTrackCode = null;            // consume it — only auto-play once
+      const match = data.tracks.find(t => t.track_code === code);
+      if (match) {
+        const el = list.querySelector(`[data-track-code="${code}"]`);
+        playTrack(match, el);
+        // Focused single-track experience for widgets: hide the list + toggle
+        if (SINGLE_TRACK_HIDES_LIST) {
+          const listCard = $('track-list-card');
+          const modeCard = $('mode-card-bottom');
+          const modeToggle = $('mode-toggle');
+          if (listCard) listCard.style.display = 'none';
+          if (modeCard) modeCard.style.display = 'none';
+          // If the toggle is inside the player card, hide it directly too
+          if (modeToggle) modeToggle.style.display = 'none';
+          const modeHint = $('mode-hint');
+          if (modeHint) modeHint.style.display = 'none';
+        }
+      } else {
+        // Requested track not found or not accessible for this participant
+        $('now-playing').textContent = UI.TRACK_NOT_AVAILABLE;
+      }
+    }
   }
 
   // ── Play a track ──────────────────────────────────────────────────────
