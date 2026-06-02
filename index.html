@@ -456,9 +456,9 @@
       navigator.mediaSession.metadata = new MediaMetadata({
         title: track.title, artist: UI.PLATFORM_ARTIST, album: '',
       });
-      navigator.mediaSession.setActionHandler('play',  () => { audio.play().catch(() => {}); });
-      navigator.mediaSession.setActionHandler('pause', () => { audio.pause(); });
-      navigator.mediaSession.setActionHandler('stop',  () => { audio.pause(); });
+      navigator.mediaSession.setActionHandler('play',  () => { if (audio.paused) fadePlay(); });
+      navigator.mediaSession.setActionHandler('pause', () => { if (!audio.paused) fadePause(); });
+      navigator.mediaSession.setActionHandler('stop',  () => { if (!audio.paused) fadePause(); });
     }
   }
 
@@ -471,7 +471,7 @@
       hasStartedPlaying = true;
       document.querySelectorAll('.track-item').forEach(d => d.style.pointerEvents = '');
       audio.muted = false;            // restore audio for the new track
-      audio.play().catch(() => {});
+      fadePlay();                     // fade in to avoid a start click
     }, { once: true });
 
     audio.addEventListener('error', function onErr() {
@@ -514,13 +514,61 @@
       });
   }
 
+  // Smoothly fade volume before pausing (prevents the click/pop from an
+  // abrupt stop), then restore on resume. ~40ms is inaudible as a fade but
+  // gives the audio hardware a gentle envelope instead of a hard cut.
+  // ── Smooth fades on play/pause ────────────────────────────────────────
+  // Abruptly starting or stopping audio mid-waveform causes a click/pop.
+  // Fading the volume over a few ms gives a gentle envelope instead.
+  // Note: iOS Safari ignores audio.volume, so these are no-ops there (the
+  // play/pause still happens, just without the fade).
+  // When true, play/pause transitions fade the volume over a few ms to avoid
+  // click/pop sounds. When false, play/pause happen instantly (original behaviour).
+  // No effect on iOS Safari, which ignores audio.volume regardless.
+  const FADE_AUDIO_ACTIONS = true;
+
+  const FADE_STEPS = 8;
+  const FADE_STEP_MS = 5;
+  let fadeTimer = null;
+  let userVolume = 1;   // the volume the user actually wants (from the slider)
+
+  function fadePlay() {
+    if (!FADE_AUDIO_ACTIONS) { audio.play().catch(() => {}); return; }
+    if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
+    audio.volume = 0;
+    audio.play().then(() => {
+      let i = 0;
+      fadeTimer = setInterval(() => {
+        i++;
+        audio.volume = Math.min(userVolume, userVolume * (i / FADE_STEPS));
+        if (i >= FADE_STEPS) { clearInterval(fadeTimer); fadeTimer = null; audio.volume = userVolume; }
+      }, FADE_STEP_MS);
+    }).catch(() => { audio.volume = userVolume; });
+  }
+
+  function fadePause() {
+    if (!FADE_AUDIO_ACTIONS) { audio.pause(); return; }
+    if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
+    const start = audio.volume || userVolume;
+    let i = 0;
+    fadeTimer = setInterval(() => {
+      i++;
+      audio.volume = Math.max(0, start * (1 - i / FADE_STEPS));
+      if (i >= FADE_STEPS) {
+        clearInterval(fadeTimer); fadeTimer = null;
+        audio.pause();
+        audio.volume = userVolume;   // restore for next play
+      }
+    }, FADE_STEP_MS);
+  }
+
   $('btn-play').onclick = () => {
     if (!currentTrack) return;
-    if (audio.paused) audio.play().catch(() => {});
-    else audio.pause();
+    if (audio.paused) fadePlay();
+    else fadePause();
   };
 
-  $('volume-slider').oninput = function() { audio.volume = parseFloat(this.value); };
+  $('volume-slider').oninput = function() { userVolume = parseFloat(this.value); audio.volume = userVolume; };
 
   audio.addEventListener('timeupdate',    updateProgress);
   audio.addEventListener('progress',      updateBuffered);
