@@ -702,8 +702,9 @@
     if (document.visibilityState === 'hidden') {
       logEvent('background');
     } else {
+      logEvent('foreground');
       lastPosition = audio.currentTime;
-      if (!audio.paused) { logEvent('foreground'); resetWatchdog(); }
+      if (!audio.paused) resetWatchdog();
     }
   });
 
