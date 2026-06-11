@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reports — Azreon Tracks Platform</title>
+  <style>
+    :root {
+      --bg:             #7f693a;
+      --bg-image:       none;
+      --primary:        #a15a24;
+      --primary-dark:   #7d4419;
+      --accent:         #d4a843;
+      --secondary:      #391e1e;
+      --secondary-dark: #2a1515;
+      --text:           #222;
+      --muted:          #888;
+      --err:            #c0392b;
+      --border:         #eee;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background-color: var(--bg); background-image: var(--bg-image); background-size: cover; background-position: center; background-attachment: fixed; min-height: 100vh; }
+    .container { max-width: 520px; margin: 0 auto; padding: 24px 16px; }
+    .card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,.08); margin-bottom: 16px; }
+    h1 { font-size: 1.4rem; color: var(--text); margin-bottom: 16px; text-align: center; }
+    h2 { font-size: 1.1rem; color: #333; margin-bottom: 14px; }
+    button.primary { width: 100%; padding: 14px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-top: 8px; }
+    button.primary:hover { background: var(--primary-dark); }
+    button.primary:disabled { opacity: .5; cursor: not-allowed; }
+    button.secondary { width: 100%; padding: 14px; background: var(--secondary); color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-top: 8px; }
+    button.secondary:hover { background: var(--secondary-dark); }
+    .msg { font-size: .9rem; color: var(--muted); text-align: center; margin-top: 8px; }
+    .err { color: var(--err); }
+    .report-list-header { display: flex; align-items: center; gap: 8px; padding: 0 0 7px; border-bottom: 2px solid #f0f0f0; margin-bottom: 4px; }
+    .report-list-header span { font-size: .67rem; font-weight: 700; color: #bbb; text-transform: uppercase; letter-spacing: .04em; cursor: pointer; user-select: none; overflow: hidden; white-space: nowrap; }
+    .report-list-header span:hover { color: #999; }
+    .report-list-header span.sort-active { color: var(--primary); }
+    .sort-arr { display: inline-block; width: 0; height: 0; margin-left: 4px; vertical-align: middle; }
+    .sort-arr.asc  { border-left: 4px solid transparent; border-right: 4px solid transparent; border-bottom: 6px solid currentColor; }
+    .sort-arr.desc { border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 6px solid currentColor; }
+    .report-item { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--border); cursor: pointer; min-width: 0; }
+    .report-item:last-child { border-bottom: none; }
+    .report-item:hover .col-title { color: var(--primary); text-decoration: underline; }
+    .col-id    { width: 34px;  flex-shrink: 0; font-size: .78rem; font-weight: 700; color: var(--primary); font-variant-numeric: tabular-nums; }
+    .col-title { flex: 1; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; font-size: .88rem; }
+    .col-date  { width: 76px;  flex-shrink: 0; font-size: .76rem; color: var(--muted); text-align: right; }
+    .col-num   { width: 22px;  flex-shrink: 0; font-size: .76rem; color: var(--muted); text-align: right; }
+    .col-proto { width: 52px;  flex-shrink: 0; font-size: .76rem; color: var(--muted); text-align: center; }
+    .col-user  { width: 46px;  flex-shrink: 0; font-size: .76rem; color: var(--muted); text-align: right; }
+    .logout-wrap { position: relative; margin-top: 8px; }
+    .logout-tip { display: none; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.82); color: #fff; font-size: .78rem; padding: 6px 14px; border-radius: 6px; white-space: nowrap; pointer-events: none; z-index: 10; }
+    .logout-tip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: rgba(0,0,0,.82); }
+    .logout-wrap:hover .logout-tip { display: block; }
+    .logout-wrap #logout-btn { width: 100%; margin-top: 0; }
+    #startup-loading { display: flex; align-items: center; justify-content: center; min-height: 60vh; }
+    .startup-bar { width: 200px; height: 4px; background: rgba(255,255,255,0.3); border-radius: 2px; overflow: hidden; }
+    .startup-bar::after { content: ''; display: block; height: 100%; width: 40%; background: var(--accent); border-radius: 2px; animation: slide 1.2s ease-in-out infinite; }
+    @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }
+    .startup-label { font-size: .85rem; color: rgba(255,255,255,0.7); }
+    #main-content { display: none; }
+    #report-viewer {
+      display: none;
+      position: fixed; inset: 0; z-index: 100;
+      background: #fff;
+      flex-direction: column;
+    }
+    #report-viewer.open { display: flex; }
+    #upload-summary { display: none; font-size: .85rem; color: #555; margin-top: 8px; padding: 8px; background: #f5f5f5; border-radius: 6px; }
+    #upload-msg { font-size: .9rem; text-align: center; margin-top: 8px; }
+    .file-pick-btn { display: block; width: 100%; padding: 14px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; text-align: center; margin-top: 8px; }
+    .file-pick-btn:hover { background: var(--primary-dark); }
+    #upload-file { display: none; }
+    .page-header { display: flex; align-items: center; gap: 0; margin-bottom: 16px; }
+    .page-header a { color: #fff; text-decoration: none; font-size: .9rem; opacity: .85; padding-right: 14px; flex-shrink: 0; }
+    .page-header a:hover { opacity: 1; text-decoration: underline; }
+    .page-header .divider { width: 1px; height: 18px; background: rgba(255,255,255,0.4); margin-right: 14px; flex-shrink: 0; }
+    .page-header h1 { flex: 1; margin-bottom: 0; text-align: left; color: #fff; font-size: 1.3rem; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div id="startup-loading">
+    <div class="card" style="text-align:center;padding:32px 24px;display:inline-block;min-width:200px">
+      <div class="startup-bar" style="margin:0 auto 12px"></div>
+      <div class="startup-label" style="display:block;color:#888">Loading…</div>
+    </div>
+  </div>
+
+  <div id="main-content">
+    <div class="page-header">
+      <a href="player.html">&#8592; Player</a>
+      <div class="divider"></div>
+      <h1>Reports</h1>
+    </div>
+
+    <div class="card" id="reports-card">
+      <h2>My Reports</h2>
+      <div id="reports-list"><p class="msg">Loading…</p></div>
+    </div>
+
+    <div class="card" id="admin-reports-card" style="display:none">
+      <h2>All Reports (Admin)</h2>
+      <div id="admin-reports-list"><p class="msg">Loading…</p></div>
+    </div>
+
+    <div class="card" id="upload-card" style="display:none">
+      <h2>Upload Report</h2>
+      <p class="msg" style="text-align:left;margin-bottom:4px">Filename format:</p>
+      <p class="msg" style="text-align:left;margin-bottom:12px"><code>participantId-protocolId-yyyy_mm_dd-number-title.html</code></p>
+      <input type="file" id="upload-file" accept=".html,text/html">
+      <label for="upload-file" class="file-pick-btn" id="file-pick-label">Select HTML file</label>
+      <div id="upload-summary"></div>
+      <button class="primary" id="upload-btn" disabled>Upload</button>
+      <div id="upload-msg" class="msg"></div>
+    </div>
+
+    <div class="logout-wrap">
+      <div class="logout-tip" id="logout-tip">—</div>
+      <button class="secondary" id="logout-btn">Log Out</button>
+    </div>
+  </div>
+
+</div>
+
+<div id="report-viewer">
+  <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #eee;background:#fff;flex-shrink:0">
+    <button onclick="closeReport()" style="background:none;border:none;font-size:1rem;color:#1A4F8A;cursor:pointer;padding:4px 8px;flex-shrink:0;">&#8592; Back</button>
+    <div style="width:1px;height:18px;background:#ddd;flex-shrink:0;"></div>
+    <span id="report-viewer-title" style="font-size:.95rem;font-weight:500;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+  </div>
+  <iframe id="report-iframe" sandbox="allow-scripts" style="flex:1;width:100%;border:none;" src="about:blank"></iframe>
+</div>
+
+<script>
+  const WORKER = 'https://audio-worker.azreon.workers.dev';
+  const $      = id => document.getElementById(id);
+
+  const token = localStorage.getItem('ap_token');
+  if (!token) { location.replace('index.html'); }
+
+  let isAdmin              = false;
+  let currentReportBlobUrl = null;
+  let uploadFile           = null;
+  let allReports           = [];
+  let adminReports         = [];
+  let sortKey              = 'id';
+  let sortDir              = 1;    // 1 = asc, -1 = desc
+
+  const params      = new URLSearchParams(location.search);
+  const reportParam = params.get('report');
+
+  init();
+
+  async function init() {
+    const email = localStorage.getItem('ap_email');
+    if (email) {
+      $('logout-tip').textContent = email;
+    } else {
+      $('logout-tip').style.display = 'none'; // no email stored — suppress tooltip entirely
+    }
+
+    const res = await fetch(WORKER + '/reports', {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    if (res.status === 401) { logout(); return; }
+
+    const data = await res.json();
+    isAdmin = !!data.is_admin;
+    allReports = data.reports || [];
+
+    $('startup-loading').style.display = 'none';
+    $('main-content').style.display    = 'block';
+
+    renderReports(allReports, $('reports-list'));
+
+    if (isAdmin) {
+      $('admin-reports-card').style.display = 'block';
+      $('upload-card').style.display        = 'block';
+      loadAdminReports();
+    }
+
+    if (reportParam) openReportByParam(reportParam);
+  }
+
+  function arrow(key) {
+    if (sortKey !== key) return '';
+    return sortDir === 1
+      ? '<span class="sort-arr asc"></span>'
+      : '<span class="sort-arr desc"></span>';
+  }
+
+  function hdrSpan(label, key, extraStyle = '') {
+    const active = sortKey === key ? ' sort-active' : '';
+    return `<span class="${active}" style="${extraStyle}" onclick="setSort('${key}')">${label}${arrow(key)}</span>`;
+  }
+
+  function renderReports(reports, container, showId = false) {
+    if (!reports.length) {
+      container.innerHTML = '<p class="msg">No reports available.</p>';
+      return;
+    }
+    container.innerHTML = '';
+
+    // Header row (sortable for admin)
+    const hdr = document.createElement('div');
+    hdr.className = 'report-list-header';
+    if (showId) {
+      hdr.innerHTML =
+        hdrSpan('ID',    'id',            'width:34px;flex-shrink:0') +
+        hdrSpan('Name',  'title',         'flex:1;min-width:0') +
+        hdrSpan('Date',  'report_date',   'width:76px;text-align:right') +
+        hdrSpan('#',     'report_number', 'width:22px;text-align:right') +
+        hdrSpan('Code',  'protocol_id',   'width:52px;text-align:center') +
+        hdrSpan('User',  'user_id',       'width:46px;text-align:right');
+    } else {
+      hdr.innerHTML =
+        `<span style="flex:1">Report</span>` +
+        `<span style="width:78px;text-align:right">Date</span>`;
+    }
+    container.appendChild(hdr);
+
+    reports.forEach(r => {
+      const div = document.createElement('div');
+      div.className = 'report-item';
+      if (showId) {
+        div.innerHTML =
+          `<span class="col-id">${r.id}</span>` +
+          `<span class="col-title">${r.title}</span>` +
+          `<span class="col-date" style="text-align:right">${r.report_date ?? '—'}</span>` +
+          `<span class="col-num" style="text-align:right">${r.report_number ?? '—'}</span>` +
+          `<span class="col-proto" style="width:52px;text-align:center">${r.protocol_id ?? '—'}</span>` +
+          `<span class="col-user" style="text-align:right">${r.user_id ?? '—'}</span>`;
+      } else {
+        div.innerHTML =
+          `<span class="col-title">${r.title}</span>` +
+          `<span class="col-date">${r.report_date ?? ''}</span>`;
+      }
+      div.onclick = () => openReport(r.id, r.title);
+      container.appendChild(div);
+    });
+  }
+
+  function setSort(key) {
+    if (sortKey === key) sortDir *= -1;
+    else { sortKey = key; sortDir = 1; }
+    renderSorted();
+  }
+
+  function renderSorted() {
+    const sorted = [...adminReports].sort((a, b) => {
+      let av = a[sortKey] ?? '';
+      let bv = b[sortKey] ?? '';
+      if (typeof av === 'string') av = av.toLowerCase();
+      if (typeof bv === 'string') bv = bv.toLowerCase();
+      return av < bv ? -sortDir : av > bv ? sortDir : 0;
+    });
+    renderReports(sorted, $('admin-reports-list'), true);
+  }
+
+  async function loadAdminReports() {
+    const res = await fetch(WORKER + '/admin/reports', {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    if (!res.ok) {
+      $('admin-reports-list').innerHTML = '<p class="msg err">Failed to load.</p>';
+      return;
+    }
+    const data = await res.json();
+    adminReports = data.reports || [];
+    // merge into allReports (avoiding dupes by id)
+    const knownIds = new Set(allReports.map(r => r.id));
+    adminReports.forEach(r => { if (!knownIds.has(r.id)) allReports.push(r); });
+    renderSorted();
+  }
+
+  async function fetchReportHtml(url) {
+    const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const html = await res.text();
+    const blob = new Blob([html], { type: 'text/html' });
+    if (currentReportBlobUrl) URL.revokeObjectURL(currentReportBlobUrl);
+    currentReportBlobUrl   = URL.createObjectURL(blob);
+    $('report-iframe').src = currentReportBlobUrl;
+  }
+
+  async function openReport(id, title) {
+    const found = allReports.find(r => r.id === id);
+    $('report-viewer-title').textContent = title || (found ? found.title : '');
+    $('report-iframe').src = 'about:blank';
+    $('report-viewer').classList.add('open');
+    try {
+      await fetchReportHtml(`${WORKER}/report?id=${id}`);
+    } catch {
+      $('report-iframe').srcdoc = '<p style="font-family:sans-serif;padding:24px;color:#c0392b">Failed to load report.</p>';
+    }
+  }
+
+  async function openReportByDate(date, number) {
+    const found = allReports.find(r => r.report_date === date && r.report_number == number);
+    $('report-viewer-title').textContent = found ? found.title : 'Report';
+    $('report-iframe').src = 'about:blank';
+    $('report-viewer').classList.add('open');
+    try {
+      await fetchReportHtml(`${WORKER}/report?date=${encodeURIComponent(date)}&number=${encodeURIComponent(number)}`);
+    } catch {
+      $('report-iframe').srcdoc = '<p style="font-family:sans-serif;padding:24px;color:#c0392b">Report not found.</p>';
+    }
+  }
+
+  function openReportByParam(param) {
+    if (/^\d+$/.test(param)) {
+      openReport(parseInt(param, 10), '');
+    } else {
+      const m = param.match(/^(.+)-(\d+)$/);
+      if (m) openReportByDate(m[1], m[2]);
+    }
+  }
+
+  function closeReport() {
+    $('report-viewer').classList.remove('open');
+    $('report-iframe').src = 'about:blank';
+    if (currentReportBlobUrl) {
+      URL.revokeObjectURL(currentReportBlobUrl);
+      currentReportBlobUrl = null;
+    }
+  }
+
+  // ── Upload ────────────────────────────────────────────────────────────
+  $('upload-file').addEventListener('change', function() {
+    uploadFile = this.files[0] || null;
+    const summary = $('upload-summary');
+    const btn     = $('upload-btn');
+    const label   = $('file-pick-label');
+    $('upload-msg').textContent = '';
+
+    if (!uploadFile) {
+      summary.style.display = 'none';
+      btn.disabled = true;
+      label.textContent = 'Select HTML file';
+      return;
+    }
+    label.textContent     = uploadFile.name;
+    summary.style.display = 'block';
+    summary.textContent   = `${(uploadFile.size / 1024).toFixed(1)} KB`;
+    btn.disabled = false;
+  });
+
+  $('upload-btn').onclick = async function() {
+    if (!uploadFile) return;
+    this.disabled = true;
+    $('upload-msg').textContent = 'Uploading…';
+    $('upload-msg').className   = 'msg';
+
+    const form = new FormData();
+    form.append('file', uploadFile);
+
+    try {
+      const res  = await fetch(WORKER + '/admin/reports', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token },
+        body: form,
+      });
+      const data = await res.json();
+      if (res.ok) {
+        $('upload-msg').textContent = 'Uploaded successfully.';
+        $('upload-msg').className   = 'msg';
+        $('upload-file').value      = '';
+        $('upload-summary').style.display = 'none';
+        $('file-pick-label').textContent  = 'Select HTML file';
+        uploadFile   = null;
+        adminReports = [];
+        this.disabled = true;
+        loadAdminReports();
+      } else {
+        $('upload-msg').textContent = data.error || 'Upload failed.';
+        $('upload-msg').className   = 'msg err';
+        this.disabled = false;
+      }
+    } catch {
+      $('upload-msg').textContent = 'Network error. Try again.';
+      $('upload-msg').className   = 'msg err';
+      this.disabled = false;
+    }
+  };
+
+  // Email tooltip — tap toggles briefly on mobile, hover works on desktop
+  $('logout-btn').addEventListener('touchstart', e => {
+    const tip = $('logout-tip');
+    if (tip.style.display !== 'block') {
+      e.preventDefault();
+      tip.style.display = 'block';
+      setTimeout(() => { tip.style.display = ''; }, 2500);
+    }
+  }, { passive: false });
+
+  $('logout-btn').onclick = logout;
+  function logout() {
+    localStorage.removeItem('ap_token');
+    localStorage.removeItem('ap_email');
+    location.href = 'index.html';
+  }
+</script>
+</body>
+</html>
