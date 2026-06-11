@@ -107,7 +107,7 @@
         $('otp-input').dataset.email = email;
         $('otp-input').focus();
       } else {
-        $('send-msg').textContent = data.error || 'Error sending code.';
+        $('send-msg').textContent = data.message || data.error || 'Error sending code.';
         $('send-msg').className   = 'msg err';
       }
     } catch {
@@ -131,7 +131,7 @@
         localStorage.setItem('ap_email', email);
         redirectAfterAuth();
       } else {
-        $('otp-msg').textContent = data.error || 'Invalid code.';
+        $('otp-msg').textContent = data.message || data.error || 'Invalid code.';
         $('otp-msg').className   = 'msg err';
       }
     } catch {
