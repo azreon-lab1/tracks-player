@@ -113,7 +113,14 @@
       <input type="file" id="upload-file" accept=".html,text/html">
       <label for="upload-file" class="file-pick-btn" id="file-pick-label">Select HTML file</label>
       <div id="upload-summary"></div>
-      <button class="primary" id="upload-btn" disabled>Upload</button>
+      <div id="scope-row" style="display:none;margin-top:10px">
+        <p class="msg" style="text-align:left;margin-bottom:6px;font-size:.78rem">Scope (auto-detected — tap to change):</p>
+        <div style="display:flex;gap:8px">
+          <button id="scope-participant" onclick="setScope('participant')" style="flex:1;padding:8px;border:2px solid #ddd;border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer">Participant</button>
+          <button id="scope-admin"       onclick="setScope('admin')"       style="flex:1;padding:8px;border:2px solid #ddd;border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer">Admin</button>
+        </div>
+      </div>
+      <button class="primary" id="upload-btn" disabled style="margin-top:12px">Upload</button>
       <div id="upload-msg" class="msg"></div>
     </div>
 
@@ -144,6 +151,7 @@
   let isAdmin              = false;
   let currentReportBlobUrl = null;
   let uploadFile           = null;
+  let uploadScope          = 'admin'; // default; auto-detected when file is picked
   let allReports           = [];
   let adminReports         = [];
   let sortKey              = 'id';
@@ -337,16 +345,32 @@
     $('upload-msg').textContent = '';
 
     if (!uploadFile) {
-      summary.style.display = 'none';
-      btn.disabled = true;
-      label.textContent = 'Select HTML file';
+      summary.style.display         = 'none';
+      $('scope-row').style.display  = 'none';
+      btn.disabled                  = true;
+      label.textContent             = 'Select HTML file';
       return;
     }
     label.textContent     = uploadFile.name;
     summary.style.display = 'block';
     summary.textContent   = `${(uploadFile.size / 1024).toFixed(1)} KB`;
-    btn.disabled = false;
+    btn.disabled          = false;
+
+    // Auto-detect scope: participant pattern = userId-code-yyyy_mm_dd-number-title.html
+    const isParticipant = /^[^-]+-[^-]+-\d{4}_\d{2}_\d{2}-\d+-/.test(uploadFile.name);
+    setScope(isParticipant ? 'participant' : 'admin');
+    $('scope-row').style.display = 'block';
   });
+
+  function setScope(s) {
+    uploadScope = s;
+    $('scope-participant').style.cssText = s === 'participant'
+      ? 'flex:1;padding:8px;border:2px solid var(--primary);border-radius:8px;font-size:.85rem;background:#f5f1eb;cursor:pointer;font-weight:600;color:var(--primary)'
+      : 'flex:1;padding:8px;border:2px solid #ddd;border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer';
+    $('scope-admin').style.cssText = s === 'admin'
+      ? 'flex:1;padding:8px;border:2px solid var(--primary);border-radius:8px;font-size:.85rem;background:#f5f1eb;cursor:pointer;font-weight:600;color:var(--primary)'
+      : 'flex:1;padding:8px;border:2px solid #ddd;border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer';
+  }
 
   $('upload-btn').onclick = async function() {
     if (!uploadFile) return;
@@ -356,6 +380,7 @@
 
     const form = new FormData();
     form.append('file', uploadFile);
+    form.append('scope', uploadScope);
 
     try {
       const res  = await fetch(WORKER + '/admin/reports', {
@@ -370,7 +395,9 @@
         $('upload-file').value      = '';
         $('upload-summary').style.display = 'none';
         $('file-pick-label').textContent  = 'Select HTML file';
+        $('scope-row').style.display      = 'none';
         uploadFile   = null;
+        uploadScope  = 'admin';
         adminReports = [];
         this.disabled = true;
         loadAdminReports();
