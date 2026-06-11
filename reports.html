@@ -138,6 +138,7 @@
     <div style="width:1px;height:18px;background:#ddd;flex-shrink:0;"></div>
     <span id="report-viewer-title" style="font-size:.95rem;font-weight:500;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
   </div>
+  <div id="report-loading" style="display:none;flex:1;align-items:center;justify-content:center;background:#fff"></div>
   <iframe id="report-iframe" sandbox="allow-scripts" style="flex:1;width:100%;border:none;" src="about:blank"></iframe>
 </div>
 
@@ -281,7 +282,7 @@
     showLoadingBar('admin-reports-list');
     const [res] = await Promise.all([
       fetch(WORKER + '/admin/reports', { headers: { Authorization: 'Bearer ' + token } }),
-      new Promise(r => setTimeout(r, 800)),
+      new Promise(r => setTimeout(r, 100)),
     ]);
     if (!res.ok) {
       $('admin-reports-list').innerHTML = '<p class="msg err">Failed to load.</p>';
@@ -305,28 +306,45 @@
     $('report-iframe').src = currentReportBlobUrl;
   }
 
+  function showReportLoading(title) {
+    $('report-viewer-title').textContent = title;
+    $('report-iframe').style.display   = 'none';
+    showLoadingBar('report-loading');
+    $('report-loading').style.display  = 'flex';
+    $('report-viewer').classList.add('open');
+  }
+
+  function hideReportLoading() {
+    $('report-loading').style.display = 'none';
+    $('report-iframe').style.display  = '';
+  }
+
   async function openReport(id, title) {
     const found = allReports.find(r => r.id === id);
-    $('report-viewer-title').textContent = title || (found ? found.title : '');
-    $('report-iframe').src = 'about:blank';
-    $('report-viewer').classList.add('open');
+    showReportLoading(title || (found ? found.title : ''));
     try {
-      await fetchReportHtml(`${WORKER}/report?id=${id}`);
+      await Promise.all([
+        fetchReportHtml(`${WORKER}/report?id=${id}`),
+        new Promise(r => setTimeout(r, 800)),
+      ]);
     } catch {
       $('report-iframe').srcdoc = '<p style="font-family:sans-serif;padding:24px;color:#c0392b">Failed to load report.</p>';
     }
+    hideReportLoading();
   }
 
   async function openReportByDate(date, number) {
     const found = allReports.find(r => r.report_date === date && r.report_number == number);
-    $('report-viewer-title').textContent = found ? found.title : 'Report';
-    $('report-iframe').src = 'about:blank';
-    $('report-viewer').classList.add('open');
+    showReportLoading(found ? found.title : 'Report');
     try {
-      await fetchReportHtml(`${WORKER}/report?date=${encodeURIComponent(date)}&number=${encodeURIComponent(number)}`);
+      await Promise.all([
+        fetchReportHtml(`${WORKER}/report?date=${encodeURIComponent(date)}&number=${encodeURIComponent(number)}`),
+        new Promise(r => setTimeout(r, 800)),
+      ]);
     } catch {
       $('report-iframe').srcdoc = '<p style="font-family:sans-serif;padding:24px;color:#c0392b">Report not found.</p>';
     }
+    hideReportLoading();
   }
 
   function openReportByParam(param) {
