@@ -141,6 +141,7 @@
   <iframe id="report-iframe" sandbox="allow-scripts" style="flex:1;width:100%;border:none;" src="about:blank"></iframe>
 </div>
 
+<script src="ui.js"></script>
 <script>
   const WORKER = 'https://audio-worker.azreon.workers.dev';
   const $      = id => document.getElementById(id);
@@ -234,13 +235,21 @@
       const div = document.createElement('div');
       div.className = 'report-item';
       if (showId) {
-        div.innerHTML =
-          `<span class="col-id">${r.id}</span>` +
-          `<span class="col-title">${r.title}</span>` +
-          `<span class="col-date" style="text-align:right">${r.report_date ?? '—'}</span>` +
-          `<span class="col-num" style="text-align:right">${r.report_number ?? '—'}</span>` +
-          `<span class="col-proto" style="width:52px;text-align:center">${r.protocol_id ?? '—'}</span>` +
-          `<span class="col-user" style="text-align:right">${r.user_id ?? '—'}</span>`;
+        const isAdminRow = r.scope === 'admin' || (!r.user_id && !r.protocol_id && !r.report_number);
+        if (isAdminRow) {
+          div.innerHTML =
+            `<span class="col-id">${r.id}</span>` +
+            `<span class="col-title" style="flex:1">${r.title}</span>` +
+            `<span class="col-date" style="text-align:right">${r.report_date ?? '—'}</span>`;
+        } else {
+          div.innerHTML =
+            `<span class="col-id">${r.id}</span>` +
+            `<span class="col-title">${r.title}</span>` +
+            `<span class="col-date" style="text-align:right">${r.report_date ?? '—'}</span>` +
+            `<span class="col-num" style="text-align:right">${r.report_number ?? '—'}</span>` +
+            `<span class="col-proto" style="width:52px;text-align:center">${r.protocol_id ?? '—'}</span>` +
+            `<span class="col-user" style="text-align:right">${r.user_id ?? '—'}</span>`;
+        }
       } else {
         div.innerHTML =
           `<span class="col-title">${r.title}</span>` +
@@ -269,6 +278,7 @@
   }
 
   async function loadAdminReports() {
+    showLoadingBar('admin-reports-list');
     const res = await fetch(WORKER + '/admin/reports', {
       headers: { Authorization: 'Bearer ' + token }
     });
