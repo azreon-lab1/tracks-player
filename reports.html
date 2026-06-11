@@ -147,6 +147,11 @@
   const WORKER = 'https://audio-worker.azreon.workers.dev';
   const $      = id => document.getElementById(id);
 
+  // Allow in-page navigation (sticky nav, anchor links, CDN scripts) inside report iframes.
+  // Trade-off: with allow-scripts + allow-same-origin, a report's JS can reach the parent frame.
+  // Safe as long as only trusted HTML files are uploaded by admins.
+  const REPORT_SAME_ORIGIN = true;
+
   const token = localStorage.getItem('ap_token');
   if (!token) { location.replace('index.html'); }
 
@@ -308,6 +313,8 @@
 
   function showReportLoading(title) {
     $('report-viewer-title').textContent = title;
+    $('report-iframe').setAttribute('sandbox',
+      REPORT_SAME_ORIGIN ? 'allow-scripts allow-same-origin' : 'allow-scripts');
     $('report-iframe').style.display   = 'none';
     showLoadingBar('report-loading');
     $('report-loading').style.display  = 'flex';
