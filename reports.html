@@ -279,9 +279,10 @@
 
   async function loadAdminReports() {
     showLoadingBar('admin-reports-list');
-    const res = await fetch(WORKER + '/admin/reports', {
-      headers: { Authorization: 'Bearer ' + token }
-    });
+    const [res] = await Promise.all([
+      fetch(WORKER + '/admin/reports', { headers: { Authorization: 'Bearer ' + token } }),
+      new Promise(r => setTimeout(r, 800)),
+    ]);
     if (!res.ok) {
       $('admin-reports-list').innerHTML = '<p class="msg err">Failed to load.</p>';
       return;
