@@ -5,85 +5,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Azreon Tracks Platform</title>
   <style>
+    :root {
+      --bg:        #C8962E;
+      --bg-image:  none;
+      --primary:   #1A4F8A;
+      --accent:    #d4a843;
+      --secondary: #888;
+      --text:      #222;
+      --muted:     #888;
+      --err:       #c0392b;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: sans-serif; background: #C8962E; min-height: 100vh; }
+    body { font-family: sans-serif; background-color: var(--bg); background-image: var(--bg-image); background-size: cover; background-position: center; background-attachment: fixed; min-height: 100vh; }
     .container { max-width: 520px; margin: 0 auto; padding: 24px 16px; }
     .card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,.08); margin-bottom: 16px; }
-    h1 { font-size: 1.4rem; color: #222; margin-bottom: 16px; text-align: center; }
+    h1 { font-size: 1.4rem; color: var(--text); margin-bottom: 16px; text-align: center; }
     input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; margin: 8px 0; }
-    button.primary { width: 100%; padding: 14px; background: #1A4F8A; color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-top: 8px; }
+    button.primary { width: 100%; padding: 14px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-top: 8px; }
     button.primary:disabled { opacity: .5; cursor: not-allowed; }
-    button.secondary { width: 100%; padding: 14px; background: #888; color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-top: 8px; }
-    .msg { font-size: .9rem; color: #c00; margin-top: 8px; min-height: 20px; }
-    #now-playing { text-align: center; font-size: 1.3rem; font-weight: 700; color: #222; margin-bottom: 18px; }
-    .player { display: flex; flex-direction: column; gap: 12px; }
-    .player-controls { display: flex; align-items: center; gap: 12px; }
-    .btn-play { flex-shrink: 0; width: 42px; height: 42px; border-radius: 50%; background: #1A4F8A; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .15s; }
-    .btn-play:hover { background: #153f6e; }
-    .btn-play svg { fill: #fff; width: 18px; height: 18px; }
-    .btn-play:disabled { opacity: .4; cursor: not-allowed; }
-    .player-time { font-size: .85rem; color: #555; white-space: nowrap; min-width: 90px; text-align: center; }
-    .volume-wrap { display: flex; align-items: center; gap: 6px; margin-left: auto; }
-    .volume-wrap svg { fill: #555; width: 18px; height: 18px; flex-shrink: 0; }
-    input[type=range].volume-slider { -webkit-appearance: none; appearance: none; width: 72px; height: 4px; border-radius: 2px; background: #ddd; outline: none; margin: 0; padding: 0; border: none; cursor: pointer; }
-    input[type=range].volume-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #1A4F8A; cursor: pointer; }
-    input[type=range].volume-slider::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #1A4F8A; border: none; cursor: pointer; }
-    .progress-wrap { position: relative; height: 6px; border-radius: 3px; background: #e8e8e8; cursor: pointer; overflow: hidden; }
-    .progress-buffered { position: absolute; left: 0; top: 0; bottom: 0; background: #d4a843; border-radius: 3px; width: 0%; transition: width .3s linear; opacity: 0.5; }
-    .progress-played { position: absolute; left: 0; top: 0; bottom: 0; background: #111; border-radius: 3px; width: 0%; }
-    .progress-thumb { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 12px; height: 12px; border-radius: 50%; background: #111; left: 0%; transition: left .1s; }
-    .progress-loading { display: none; position: absolute; left: 0; top: 0; bottom: 0; width: 40%; background: linear-gradient(90deg, transparent, #d4a843, transparent); animation: shimmer 1.2s ease-in-out infinite; }
-    .progress-loading.active { display: block; }
-    @keyframes shimmer { 0% { transform: translateX(-150%); } 100% { transform: translateX(400%); } }
-    .loading-label { display: none; font-size: .78rem; color: #b8892a; text-align: center; margin-top: 4px; }
-    .loading-label.active { display: block; }
-    .track-item { padding: 14px; border-bottom: 1px solid #eee; cursor: pointer; border-radius: 8px; transition: background .15s; text-align: center; }
-    .track-item:last-child { border-bottom: none; }
-    .track-item:hover { background: #f0f4ff; }
-    .track-item.active { background: #c5d4f5; }
-    .track-item.active .track-title { font-weight: 600; }
-    .track-title { font-weight: 400; color: #222; }
-    .track-duration { font-size: .85rem; color: #888; margin-top: 4px; }
-    #player-section { display: none; }
-    #otp-section    { display: none; }
-    #auth-section   { display: none; }
+    button.secondary { width: 100%; padding: 14px; background: var(--secondary); color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-top: 8px; }
+    .msg { font-size: .9rem; color: var(--muted); text-align: center; margin-top: 8px; }
+    .err { color: var(--err); }
     #startup-loading { display: flex; align-items: center; justify-content: center; min-height: 60vh; }
     .startup-bar { width: 200px; height: 4px; background: rgba(255,255,255,0.3); border-radius: 2px; overflow: hidden; }
-    .startup-bar::after { content: ''; display: block; height: 100%; width: 40%; background: #d4a843; border-radius: 2px; animation: slide 1.2s ease-in-out infinite; }
+    .startup-bar::after { content: ''; display: block; height: 100%; width: 40%; background: var(--accent); border-radius: 2px; animation: slide 1.2s ease-in-out infinite; }
     @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }
     .startup-label { font-size: .85rem; color: rgba(255,255,255,0.7); }
-    /* Playback mode toggle */
-    .mode-toggle {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      overflow: hidden;
-    }
-    .mode-toggle button {
-      flex: 1;
-      padding: 8px 12px;
-      background: #fff;
-      border: none;
-      font-size: .82rem;
-      color: #555;
-      cursor: pointer;
-      transition: background .15s, color .15s;
-    }
-    .mode-toggle button.active {
-      background: #1A4F8A;
-      color: #fff;
-      font-weight: 600;
-    }
-    .mode-toggle button:not(.active):hover { background: #f0f4ff; }
-    .mode-hint {
-      font-size: .72rem;
-      color: #999;
-      text-align: center;
-      margin-top: 6px;
-    }
+    #auth-section { display: none; }
+    #otp-section  { display: none; }
   </style>
 </head>
 <body>
@@ -97,742 +46,117 @@
   </div>
 
   <div id="auth-section" class="card">
-    <h1>Azreon Tracks Platform</h1>
-    <p style="color:#555;margin-bottom:8px;text-align:center">Enter your email to receive an access code.</p>
-    <input type="email" id="email-input" placeholder="your@email.com">
+    <h1>Authentication Step</h1>
+    <p class="msg">Please enter your email address to receive a one-time code.</p>
+    <input type="email" id="email-input" placeholder="you@example.com" autocomplete="email">
     <button class="primary" id="send-btn">Send Code</button>
-    <div class="msg" id="auth-msg"></div>
+    <div class="msg" id="send-msg"></div>
   </div>
 
   <div id="otp-section" class="card">
     <h1>Enter Your Code</h1>
-    <p style="color:#555;margin-bottom:8px;text-align:center">Check your email for the 6-digit code.</p>
-    <input type="text" id="otp-input" placeholder="000000" maxlength="6" inputmode="numeric">
+    <p class="msg" id="otp-subtitle">Enter the 6-digit code sent to your email.</p>
+    <input type="text" id="otp-input" placeholder="000000" maxlength="6" inputmode="numeric" autocomplete="one-time-code">
     <button class="primary" id="verify-btn">Verify</button>
     <button class="secondary" id="back-btn">Back</button>
     <div class="msg" id="otp-msg"></div>
   </div>
 
-  <div id="player-section">
-    <div class="card">
-      <div id="now-playing">Select a track below</div>
-      <div class="player">
-        <div class="player-controls">
-          <button class="btn-play" id="btn-play" disabled>
-            <svg id="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-            <svg id="icon-pause" viewBox="0 0 24 24" style="display:none"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
-          </button>
-          <span class="player-time" id="player-time">0:00 / 0:00</span>
-          <div class="volume-wrap">
-            <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
-            <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.05" value="1">
-          </div>
-        </div>
-        <div class="progress-wrap" id="progress-wrap">
-          <div class="progress-buffered" id="progress-buffered"></div>
-          <div class="progress-loading" id="progress-loading"></div>
-          <div class="progress-played"  id="progress-played"></div>
-          <div class="progress-thumb"   id="progress-thumb"></div>
-        </div>
-        <div class="loading-label" id="loading-label">Loading…</div>
-        <div id="mode-slot-player"></div>
-      </div>
-    </div>
-    <div class="card" id="track-list-card">
-      <div id="track-list"></div>
-    </div>
-    <div class="card" id="mode-card-bottom">
-      <div id="mode-slot-bottom"></div>
-    </div>
-    <button class="secondary" id="logout-btn">Log Out</button>
-  </div>
-
-  <!-- Mode toggle template — injected into the chosen slot on load -->
-  <template id="mode-toggle-template">
-    <div class="mode-toggle" id="mode-toggle">
-      <button id="mode-blob"   onclick="setMode('blob')">Preload</button>
-      <button id="mode-stream" onclick="setMode('stream')">Stream</button>
-    </div>
-    <div class="mode-hint" id="mode-hint"></div>
-  </template>
-
 </div>
 <script>
   const WORKER = 'https://audio-worker.azreon.workers.dev';
 
-  // ── UI constants — edit these to customise labels and text ───────────
-  const UI = {
-    PLATFORM_NAME:      'Azreon Tracks Platform',
-    PLATFORM_ARTIST:    'Azreon Tracks Platform',   // shown on lock screen
-    PAGE_TITLE:         'Azreon Tracks Platform',
-    AUTH_TITLE:         'Authentication Step',       // heading on the email/code screen
-    AUTH_SUBTITLE:      'Enter your email to receive an access code.',
-    EMAIL_PLACEHOLDER:  'your@email.com',
-    SEND_CODE_BTN:      'Send Code',
-    OTP_TITLE:          'Enter Your Code',
-    OTP_SUBTITLE:       'Check your email for the 6-digit code.',
-    VERIFY_BTN:         'Verify',
-    BACK_BTN:           'Back',
-    LOGOUT_BTN:         'Log Out',
-    NOW_PLAYING_IDLE:   'Select a track below',
-    NO_TRACKS_MSG:      'No tracks available.',
-    TRACK_NOT_AVAILABLE:'That track isn\u2019t available on your account.',
-    LOADING_TEXT:       'Loading\u2026',
-    MODE_BLOB_LABEL:    'Preload',
-    MODE_STREAM_LABEL:  'Stream',
-    MODE_BLOB_HINT:     'Downloads the full track first, then plays. Works offline once loaded.',
-    MODE_STREAM_HINT:   'Plays immediately, streams as you listen. Needs a connection throughout.',
-  };
-
-  // ── Playback modes ───────────────────────────────────────────────────
-  // 'blob'   → downloads the full file first, then plays. No glitches,
-  //            works offline once loaded. (Default, user-selectable)
-  // 'stream' → plays immediately, streams as you go. (User-selectable)
-  // 'hybrid' → streams immediately + swaps to blob mid-play. Has a small
-  //            audible blip at the switch. NOT offered in the UI — set here
-  //            only if you explicitly want it.
-  const DEFAULT_MODE = 'stream';
-
-  // Where to show the playback mode toggle:
-  // 'player' → inside the player card, with the controls
-  // 'bottom' → in its own card below the track list, above Log Out
-  const MODE_TOGGLE_POSITION = 'bottom';
-
-  // When opened via a direct track link (?track=T1), hide the track list and
-  // mode toggle for a focused single-track experience (ideal for widgets).
-  // true  → direct links show only the player
-  // false → direct links auto-play but still show the full track list
-  const SINGLE_TRACK_HIDES_LIST = true;
-
-  // Active mode: persisted user choice, falling back to default.
-  // 'hybrid' can only be set via DEFAULT_MODE, never persisted from UI.
-  let activeMode = localStorage.getItem('ap_mode') || DEFAULT_MODE;
-  if (DEFAULT_MODE === 'hybrid') activeMode = 'hybrid'; // constant overrides
-
-  let token           = localStorage.getItem('ap_token');
-  let currentTrack    = null;
-  let sessionId       = newSessionId();
-  let wasPlaying      = false;
-  let hasPaused       = false;
-  let isSwitchingBlob = false;
-  let hasStartedPlaying = false;  // true after canplaythrough fires on initial load
-  let heartbeatTimer  = null;
-  const HEARTBEAT_MS  = 30000;
-
-  // Direct track link: ?track=T1 in the URL → auto-play that track once loaded.
-  // Survives the login flow (stored until the track list is available).
-  let pendingTrackCode = new URLSearchParams(location.search).get('track');
-
-  // Default heartbeat logging. Overridden at runtime by the server setting
-  // 'log_heartbeat' (returned with /tracks), so it can be changed remotely
-  // without redeploying. Heartbeats still fire internally either way —
-  // only the logging is suppressed when false.
-  let LOG_HEARTBEAT = true;
-
-  const audio = new Audio();
-  audio.preload = 'auto';
-
   const $ = id => document.getElementById(id);
 
-  // Apply UI constants to DOM
-  document.title                                    = UI.PAGE_TITLE;
-  document.querySelector('#auth-section h1')        && (document.querySelector('#auth-section h1').textContent = UI.AUTH_TITLE);
-  document.querySelector('#otp-section h1')         && (document.querySelector('#otp-section h1').textContent = UI.OTP_TITLE);
-  $('send-btn').textContent                         = UI.SEND_CODE_BTN;
-  $('verify-btn').textContent                       = UI.VERIFY_BTN;
-  $('back-btn').textContent                         = UI.BACK_BTN;
-  $('logout-btn').textContent                       = UI.LOGOUT_BTN;
-  $('now-playing').textContent                      = UI.NOW_PLAYING_IDLE;
-  $('loading-label').textContent                    = UI.LOADING_TEXT;
-  $('email-input').placeholder                      = UI.EMAIL_PLACEHOLDER;
-  document.querySelector('.startup-label').textContent = UI.LOADING_TEXT;
-  // Auth subtitles
-  const subtitles = document.querySelectorAll('#auth-section p, #otp-section p');
-  if (subtitles[0]) subtitles[0].textContent = UI.AUTH_SUBTITLE;
-  if (subtitles[1]) subtitles[1].textContent = UI.OTP_SUBTITLE;
-  injectModeToggle();
-  syncModeUI();
+  const params      = new URLSearchParams(location.search);
+  const trackParam  = params.get('track');
+  const reportParam = params.get('report');
 
+  const token = localStorage.getItem('ap_token');
   if (token) {
-    loadPlayer();
+    redirectAfterAuth();
   } else {
     $('startup-loading').style.display = 'none';
     $('auth-section').style.display    = 'block';
   }
 
-  $('send-btn').onclick = async () => {
-    const email = $('email-input').value.trim();
-    $('auth-msg').textContent = '';
-    if (!email) { $('auth-msg').textContent = 'Please enter your email.'; return; }
-    $('send-btn').disabled = true;
-    const data = await post('/auth/send-otp', { email });
-    $('send-btn').disabled = false;
-    if (data.success) {
-      $('auth-section').style.display = 'none';
-      $('otp-section').style.display  = 'block';
-      $('otp-input').focus();
+  function redirectAfterAuth() {
+    if (reportParam) {
+      location.replace('reports.html?report=' + encodeURIComponent(reportParam));
+    } else if (trackParam) {
+      location.replace('player.html?track=' + encodeURIComponent(trackParam));
     } else {
-      $('auth-msg').textContent = data.message;
+      location.replace('player.html');
     }
+  }
+
+  $('send-btn').onclick = async function() {
+    const email = $('email-input').value.trim();
+    if (!email) { $('send-msg').textContent = 'Please enter your email.'; return; }
+    this.disabled = true;
+    $('send-msg').textContent = 'Sending…';
+    $('send-msg').className   = 'msg';
+    try {
+      const res  = await post('/auth/send-otp', { email });
+      const data = await res.json();
+      if (res.ok) {
+        $('auth-section').style.display = 'none';
+        $('otp-section').style.display  = 'block';
+        $('otp-msg').textContent = '';
+        $('otp-input').value = '';
+        $('otp-input').dataset.email = email;
+        $('otp-input').focus();
+      } else {
+        $('send-msg').textContent = data.error || 'Error sending code.';
+        $('send-msg').className   = 'msg err';
+      }
+    } catch {
+      $('send-msg').textContent = 'Network error. Try again.';
+      $('send-msg').className   = 'msg err';
+    } finally { this.disabled = false; }
   };
 
-  $('verify-btn').onclick = async () => {
-    const email = $('email-input').value.trim();
-    const code  = $('otp-input').value.trim();
-    $('otp-msg').textContent = '';
-    $('verify-btn').disabled = true;
-    const data = await post('/auth/verify-otp', { email, code });
-    $('verify-btn').disabled = false;
-    if (data.success) {
-      token = data.token;
-      localStorage.setItem('ap_token', token);
-      $('otp-section').style.display = 'none';
-      loadPlayer();
-    } else {
-      $('otp-msg').textContent = data.message;
-    }
-  };
-
-  $('back-btn').onclick = () => {
-    $('otp-section').style.display  = 'none';
-    $('auth-section').style.display = 'block';
-    $('otp-input').value = '';
-    $('otp-msg').textContent = '';
+  $('verify-btn').onclick = async function() {
+    const otp   = $('otp-input').value.trim();
+    const email = $('otp-input').dataset.email || '';
+    if (!otp) { $('otp-msg').textContent = 'Please enter the code.'; return; }
+    this.disabled = true;
+    $('otp-msg').textContent = 'Verifying…';
+    $('otp-msg').className   = 'msg';
+    try {
+      const res  = await post('/auth/verify-otp', { email, otp });
+      const data = await res.json();
+      if (res.ok && data.token) {
+        localStorage.setItem('ap_token', data.token);
+        localStorage.setItem('ap_email', email);
+        redirectAfterAuth();
+      } else {
+        $('otp-msg').textContent = data.error || 'Invalid code.';
+        $('otp-msg').className   = 'msg err';
+      }
+    } catch {
+      $('otp-msg').textContent = 'Network error. Try again.';
+      $('otp-msg').className   = 'msg err';
+    } finally { this.disabled = false; }
   };
 
   $('otp-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') $('verify-btn').click();
   });
 
-  async function loadPlayer() {
-    const res = await fetch(WORKER + '/tracks', {
-      headers: { Authorization: 'Bearer ' + token }
-    });
-    if (res.status === 401) { logout(); return; }
-    const data = await res.json();
-
-    // Apply server-provided settings (changeable remotely, no redeploy)
-    if (data.settings) {
-      if (data.settings.log_heartbeat !== undefined) {
-        LOG_HEARTBEAT = data.settings.log_heartbeat === '1';
-      }
-    }
-
-    $('startup-loading').style.display = 'none';
-    $('auth-section').style.display    = 'none';
-    $('otp-section').style.display     = 'none';
-    $('player-section').style.display  = 'block';
-    const list = $('track-list');
-    list.innerHTML = '';
-    if (!data.tracks || data.tracks.length === 0) {
-      list.innerHTML = `<p style="color:#888;padding:14px;text-align:center">${UI.NO_TRACKS_MSG}</p>`;
-      return;
-    }
-    data.tracks.forEach(track => {
-      const div = document.createElement('div');
-      div.className = 'track-item';
-      div.dataset.trackId = track.id;
-      div.dataset.trackCode = track.track_code;
-      div.innerHTML = `<div class="track-title">${track.title}</div>` +
-        (track.duration ? `<div class="track-duration">${track.duration}</div>` : '');
-      div.onclick = () => playTrack(track, div);
-      list.appendChild(div);
-    });
-
-    // Direct track link: if the URL requested a specific track (?track=T1),
-    // auto-play it now that the list is loaded. Runs once per page load.
-    if (pendingTrackCode) {
-      const code = pendingTrackCode;
-      pendingTrackCode = null;            // consume it — only auto-play once
-      const match = data.tracks.find(t => t.track_code === code);
-      if (match) {
-        const el = list.querySelector(`[data-track-code="${code}"]`);
-        playTrack(match, el);
-        // Focused single-track experience for widgets: hide the list + toggle
-        if (SINGLE_TRACK_HIDES_LIST) {
-          const listCard = $('track-list-card');
-          const modeCard = $('mode-card-bottom');
-          const modeToggle = $('mode-toggle');
-          if (listCard) listCard.style.display = 'none';
-          if (modeCard) modeCard.style.display = 'none';
-          // If the toggle is inside the player card, hide it directly too
-          if (modeToggle) modeToggle.style.display = 'none';
-          const modeHint = $('mode-hint');
-          if (modeHint) modeHint.style.display = 'none';
-        }
-      } else {
-        // Requested track not found or not accessible for this participant
-        $('now-playing').textContent = UI.TRACK_NOT_AVAILABLE;
-      }
-    }
-  }
-
-  // ── Play a track ──────────────────────────────────────────────────────
-  let currentBlobUrl = null;
-  let fetchController = null;
-
-  function playTrack(track, el) {
-    document.querySelectorAll('.track-item').forEach(d => d.classList.remove('active'));
-    if (el) el.classList.add('active');
-
-    // If a track is currently loaded, stop it cleanly and log a 'stop' event
-    // for the OUTGOING track (captured before we overwrite currentTrack).
-    if (currentTrack && wasPlaying) {
-      logEvent('stop');               // logs with the still-current outgoing track + position
-    }
-    wasPlaying = false;               // prevents the pause handler from logging anything
-
-    // Mute instantly before tearing down — prevents the click from cutting
-    // audio mid-waveform. We restore (unmute) once the new source is ready.
-    audio.muted = true;
-    audio.pause();
-    audio.removeAttribute('src');
-    audio.load();                     // reset element to a clean state
-
-    currentTrack    = track;
-    sessionId       = newSessionId();
-    hasPaused       = false;
-    isSwitchingBlob = false;
-    hasStartedPlaying = false;
-    stopHeartbeat();
-    stopWatchdog();
-
-    if (fetchController) { fetchController.abort(); fetchController = null; }
-    if (currentBlobUrl)  { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
-
-    showPause(false);
-    $('progress-played').style.width = '0%';
-    $('progress-thumb').style.left   = '0%';
-    $('player-time').textContent     = '0:00 / 0:00';
-    $('now-playing').textContent = track.title;
-    $('btn-play').disabled = true;
-    setLoading(true);
-
-    // Disable track list while loading — prevents multiple taps firing multiple sessions
-    document.querySelectorAll('.track-item').forEach(d => d.style.pointerEvents = 'none');
-
-    const audioUrl = `${WORKER}/audio/${track.r2_key}?t=${encodeURIComponent(token)}`;
-
-    // ── BLOB mode: download the full file first, then play from blob ──────
-    // No source switching, no glitch. Works offline once loaded.
-    if (activeMode === 'blob') {
-      fetchController = new AbortController();
-      fetch(audioUrl, { signal: fetchController.signal })
-        .then(res => { if (!res.ok) throw new Error('Fetch failed'); return res.blob(); })
-        .then(blob => {
-          if (fetchController?.signal.aborted || currentTrack !== track) return;
-          const blobUrl = URL.createObjectURL(blob);
-          currentBlobUrl = blobUrl;
-          audio.src = blobUrl;
-          audio.load();
-          startInitialPlayback();
-        })
-        .catch(err => {
-          if (err.name !== 'AbortError') {
-            console.warn('Blob download failed, falling back to stream:', err);
-            audio.src = audioUrl;
-            audio.load();
-            startInitialPlayback();
-          }
-        });
-    }
-
-    // ── STREAM mode: play directly from the stream, no download ───────────
-    else if (activeMode === 'stream') {
-      audio.src = audioUrl;
-      audio.load();
-      startInitialPlayback();
-    }
-
-    // ── HYBRID mode: stream now, swap to blob mid-play (has a blip) ───────
-    else {
-      audio.src = audioUrl;
-      audio.load();
-      startInitialPlayback();
-      hybridBlobSwitch(audioUrl, track);
-    }
-
-    if ('mediaSession' in navigator) {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: track.title, artist: UI.PLATFORM_ARTIST, album: '',
-      });
-      navigator.mediaSession.setActionHandler('play',  () => { if (audio.paused) fadePlay(); });
-      navigator.mediaSession.setActionHandler('pause', () => { if (!audio.paused) fadePause(); });
-      navigator.mediaSession.setActionHandler('stop',  () => { if (!audio.paused) fadePause(); });
-    }
-  }
-
-  // Wait for the audio to be ready, then start playback cleanly
-  function startInitialPlayback() {
-    audio.addEventListener('canplaythrough', function onCanPlay() {
-      audio.removeEventListener('canplaythrough', onCanPlay);
-      $('btn-play').disabled = false;
-      setLoading(false);
-      hasStartedPlaying = true;
-      document.querySelectorAll('.track-item').forEach(d => d.style.pointerEvents = '');
-      audio.muted = false;            // restore audio for the new track
-      fadePlay();                     // fade in to avoid a start click
-    }, { once: true });
-
-    audio.addEventListener('error', function onErr() {
-      audio.removeEventListener('error', onErr);
-      audio.muted = false;
-      $('btn-play').disabled = false;
-      setLoading(false);
-      document.querySelectorAll('.track-item').forEach(d => d.style.pointerEvents = '');
-    }, { once: true });
-  }
-
-  // Hybrid: download blob in background and swap source mid-play
-  function hybridBlobSwitch(audioUrl, track) {
-    fetchController = new AbortController();
-    const signal = fetchController.signal;
-    fetch(audioUrl, { signal })
-      .then(res => { if (!res.ok) throw new Error('Fetch failed'); return res.blob(); })
-      .then(blob => {
-        if (signal.aborted || audio.ended || currentTrack !== track) return;
-        if (!hasStartedPlaying) return;
-        const remaining = isFinite(audio.duration) ? audio.duration - audio.currentTime : 999;
-        if (remaining < 30) return;
-        const blobUrl = URL.createObjectURL(blob);
-        currentBlobUrl = blobUrl;
-        const pos     = audio.currentTime;
-        const playing = !audio.paused;
-        isSwitchingBlob = true;
-        audio.src = blobUrl;
-        audio.addEventListener('canplay', function onBlobReady() {
-          audio.removeEventListener('canplay', onBlobReady);
-          if (!currentTrack || audio.ended) return;
-          audio.currentTime = pos;
-          if (playing) audio.play().catch(() => {});
-          setTimeout(() => { isSwitchingBlob = false; }, 500);
-        }, { once: true });
-      })
-      .catch(err => {
-        if (err.name !== 'AbortError')
-          console.warn('Hybrid blob fetch failed, continuing from stream:', err);
-      });
-  }
-
-  // Smoothly fade volume before pausing (prevents the click/pop from an
-  // abrupt stop), then restore on resume. ~40ms is inaudible as a fade but
-  // gives the audio hardware a gentle envelope instead of a hard cut.
-  // ── Smooth fades on play/pause ────────────────────────────────────────
-  // Abruptly starting or stopping audio mid-waveform causes a click/pop.
-  // Fading the volume over a few ms gives a gentle envelope instead.
-  // Note: iOS Safari ignores audio.volume, so these are no-ops there (the
-  // play/pause still happens, just without the fade).
-  // When true, play/pause transitions fade the volume over a few ms to avoid
-  // click/pop sounds. When false, play/pause happen instantly (original behaviour).
-  // No effect on iOS Safari, which ignores audio.volume regardless.
-  const FADE_AUDIO_ACTIONS = true;
-
-  const FADE_STEPS = 8;
-  const FADE_STEP_MS = 5;
-  let fadeTimer = null;
-  let userVolume = 1;   // the volume the user actually wants (from the slider)
-
-  function fadePlay() {
-    if (!FADE_AUDIO_ACTIONS) { audio.play().catch(() => {}); return; }
-    if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
-    audio.volume = 0;
-    audio.play().then(() => {
-      let i = 0;
-      fadeTimer = setInterval(() => {
-        i++;
-        audio.volume = Math.min(userVolume, userVolume * (i / FADE_STEPS));
-        if (i >= FADE_STEPS) { clearInterval(fadeTimer); fadeTimer = null; audio.volume = userVolume; }
-      }, FADE_STEP_MS);
-    }).catch(() => { audio.volume = userVolume; });
-  }
-
-  function fadePause() {
-    if (!FADE_AUDIO_ACTIONS) { audio.pause(); return; }
-    if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
-    const start = audio.volume || userVolume;
-    let i = 0;
-    fadeTimer = setInterval(() => {
-      i++;
-      audio.volume = Math.max(0, start * (1 - i / FADE_STEPS));
-      if (i >= FADE_STEPS) {
-        clearInterval(fadeTimer); fadeTimer = null;
-        audio.pause();
-        audio.volume = userVolume;   // restore for next play
-      }
-    }, FADE_STEP_MS);
-  }
-
-  $('btn-play').onclick = () => {
-    if (!currentTrack) return;
-    if (audio.paused) fadePlay();
-    else fadePause();
+  $('back-btn').onclick = () => {
+    $('otp-section').style.display  = 'none';
+    $('auth-section').style.display = 'block';
+    $('send-msg').textContent = '';
+    $('send-msg').className   = 'msg';
   };
 
-  $('volume-slider').oninput = function() { userVolume = parseFloat(this.value); audio.volume = userVolume; };
-
-  audio.addEventListener('timeupdate',    updateProgress);
-  audio.addEventListener('progress',      updateBuffered);
-  audio.addEventListener('durationchange', updateProgress);
-
-  function updateProgress() {
-    const dur = audio.duration;
-    const cur = audio.currentTime;
-    if (!dur || isNaN(dur)) return;
-    const pct = (cur / dur) * 100;
-    $('progress-played').style.width = pct + '%';
-    $('progress-thumb').style.left   = pct + '%';
-    $('player-time').textContent     = `${fmt(cur)} / ${fmt(dur)}`;
-  }
-
-  function updateBuffered() {
-    const dur = audio.duration;
-    if (!dur || isNaN(dur) || audio.buffered.length === 0) return;
-    const buffEnd = audio.buffered.end(audio.buffered.length - 1);
-    $('progress-buffered').style.width = ((buffEnd / dur) * 100) + '%';
-  }
-
-  $('progress-wrap').addEventListener('click', function(e) {
-    if (!audio.duration) return;
-    const rect = this.getBoundingClientRect();
-    const pct  = (e.clientX - rect.left) / rect.width;
-    audio.currentTime = pct * audio.duration;
-  });
-
-  // ── Single source of truth for track completion ───────────────────────
-  // Called by both the native 'ended' event and 'timeupdate' (which fires
-  // continuously while playing, including when screen is locked since JS
-  // stays alive). The native 'ended' event does not fire reliably on blob
-  // URLs on mobile, so timeupdate is the reliable detector. wasPlaying acts
-  // as a mutex so end is logged exactly once.
-  function handleTrackEnd() {
-    if (!wasPlaying) return;
-    wasPlaying = false;
-    logEvent('end');
-    showPause(false);
-    stopHeartbeat();
-    stopWatchdog();
-    $('now-playing').textContent = UI.NOW_PLAYING_IDLE;
-    $('progress-played').style.width = '0%';
-    $('progress-thumb').style.left   = '0%';
-    document.querySelectorAll('.track-item').forEach(d => d.style.pointerEvents = '');
-  }
-
-  // ── Audio events ──────────────────────────────────────────────────────
-  audio.addEventListener('play', () => {
-    showPause(true);
-    if (isSwitchingBlob) return;
-    if (!wasPlaying) {
-      logEvent('start');
-      wasPlaying = true;
-    } else if (hasPaused) {
-      logEvent('resume');
-      hasPaused = false;
-    }
-    startHeartbeat();
-    resetWatchdog();
-  });
-
-  // timeupdate fires ~4x/sec while playing — the reliable end detector
-  audio.addEventListener('timeupdate', () => {
-    if (wasPlaying && !isSwitchingBlob && isFinite(audio.duration) && audio.duration > 0
-        && audio.currentTime >= audio.duration - 0.25) {
-      handleTrackEnd();
-    }
-  });
-
-  // Native ended — fires when screen is on; backup to timeupdate
-  audio.addEventListener('ended', handleTrackEnd);
-
-  audio.addEventListener('pause', () => {
-    showPause(false);
-    if (!wasPlaying) return;            // nothing actively playing — not a user pause
-    if (!audio.ended) { logEvent('pause'); hasPaused = true; }
-    stopHeartbeat();
-    stopWatchdog();
-  });
-  audio.addEventListener('waiting', () => { if (!audio.ended) setLoading(true); });
-  audio.addEventListener('playing', () => setLoading(false));
-  audio.addEventListener('stalled', () => {
-    if (audio.ended) return;
-    setLoading(true);
-    logEvent('error');
-  });
-
-  // ── Watchdog ──────────────────────────────────────────────────────────
-  let watchdogTimer = null;
-  let lastPosition  = 0;
-
-  function resetWatchdog() {
-    clearInterval(watchdogTimer);
-    lastPosition = audio.currentTime;
-    watchdogTimer = setInterval(() => {
-      if (document.visibilityState === 'hidden' || audio.ended) {
-        lastPosition = audio.currentTime;
-        return;
-      }
-      if (!audio.paused && audio.currentTime === lastPosition && currentTrack) {
-        console.log('Watchdog: stall detected at', audio.currentTime);
-        setLoading(true);
-        showPause(false);
-        logEvent('error');
-        stopHeartbeat();
-        clearInterval(watchdogTimer);
-        const pos = audio.currentTime;
-        audio.src = `${WORKER}/audio/${currentTrack.r2_key}?t=${encodeURIComponent(token)}`;
-        audio.load();
-        audio.currentTime = pos;
-        audio.play().then(() => {
-          setLoading(false);
-          showPause(true);
-          startHeartbeat();
-          resetWatchdog();
-        }).catch(() => { setLoading(false); });
-      }
-      lastPosition = audio.currentTime;
-    }, 15000);
-  }
-
-  function stopWatchdog() {
-    clearInterval(watchdogTimer);
-    watchdogTimer = null;
-  }
-
-  document.addEventListener('visibilitychange', () => {
-    if (!currentTrack || audio.ended) return;
-    if (document.visibilityState === 'hidden') {
-      logEvent('background');
-    } else {
-      logEvent('foreground');
-      lastPosition = audio.currentTime;
-      if (!audio.paused) resetWatchdog();
-    }
-  });
-
-  function showPause(on) {
-    $('icon-play').style.display  = on ? 'none' : '';
-    $('icon-pause').style.display = on ? ''     : 'none';
-  }
-
-  // ── Playback mode toggle ──────────────────────────────────────────────
-  function injectModeToggle() {
-    const tmpl = $('mode-toggle-template');
-    const slot = MODE_TOGGLE_POSITION === 'player' ? $('mode-slot-player') : $('mode-slot-bottom');
-    if (tmpl && slot) slot.appendChild(tmpl.content.cloneNode(true));
-    // Hide the bottom card entirely if the toggle lives in the player
-    if (MODE_TOGGLE_POSITION === 'player') {
-      const bottomCard = $('mode-card-bottom');
-      if (bottomCard) bottomCard.style.display = 'none';
-    }
-    // Add spacing if it's in the player card
-    if (MODE_TOGGLE_POSITION === 'player') {
-      const t = $('mode-toggle');
-      if (t) t.style.marginTop = '14px';
-    }
-  }
-
-  function setMode(mode) {
-    if (mode !== 'blob' && mode !== 'stream') return; // hybrid is constant-only
-    activeMode = mode;
-    localStorage.setItem('ap_mode', mode);
-    syncModeUI();
-  }
-
-  function syncModeUI() {
-    const toggle = $('mode-toggle');
-    const hint   = $('mode-hint');
-    const bottomCard = $('mode-card-bottom');
-    if (!toggle) return;
-    // Hybrid is not user-selectable — hide the toggle entirely if active
-    if (activeMode === 'hybrid') {
-      toggle.style.display = 'none';
-      if (hint) hint.textContent = '';
-      // If the toggle was in its own bottom card, hide the empty card
-      if (MODE_TOGGLE_POSITION === 'bottom' && bottomCard) bottomCard.style.display = 'none';
-      return;
-    }
-    toggle.style.display = 'flex';
-    $('mode-blob').classList.toggle('active', activeMode === 'blob');
-    $('mode-stream').classList.toggle('active', activeMode === 'stream');
-    $('mode-blob').textContent   = UI.MODE_BLOB_LABEL;
-    $('mode-stream').textContent = UI.MODE_STREAM_LABEL;
-    if (hint) hint.textContent = activeMode === 'blob' ? UI.MODE_BLOB_HINT : UI.MODE_STREAM_HINT;
-  }
-
-  let loadingDelayTimer = null;
-  function setLoading(on) {
-    if (on) {
-      // Delay showing the loader — prevents flicker from brief waiting events
-      if (loadingDelayTimer) return;
-      loadingDelayTimer = setTimeout(() => {
-        $('progress-loading').classList.add('active');
-        $('loading-label').classList.add('active');
-        loadingDelayTimer = null;
-      }, 400);
-    } else {
-      // Cancel any pending show, and hide immediately
-      if (loadingDelayTimer) { clearTimeout(loadingDelayTimer); loadingDelayTimer = null; }
-      $('progress-loading').classList.remove('active');
-      $('loading-label').classList.remove('active');
-    }
-  }
-
-  function fmt(s) {
-    if (!s || isNaN(s)) return '0:00';
-    const m = Math.floor(s / 60);
-    const sec = Math.floor(s % 60).toString().padStart(2, '0');
-    return `${m}:${sec}`;
-  }
-
-  function startHeartbeat() {
-    stopHeartbeat();
-    heartbeatTimer = setInterval(() => {
-      if (LOG_HEARTBEAT) logEvent('heartbeat');
-    }, HEARTBEAT_MS);
-  }
-  function stopHeartbeat() {
-    if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
-  }
-
-  function logEvent(type) {
-    if (!currentTrack || !token) return;
-    fetch(WORKER + '/log', {
+  function post(path, body) {
+    return fetch(WORKER + path, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-      body: JSON.stringify({
-        clientTimestamp: new Date().toISOString(),
-        trackId:    currentTrack.id,
-        trackTitle: currentTrack.title,
-        trackCode:  currentTrack.track_code ?? null,
-        eventType:  type,
-        positionMs: Math.round((audio.currentTime || 0) * 1000),
-        durationMs: isFinite(audio.duration) ? Math.round(audio.duration * 1000) : null,
-        sessionId,
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
     });
-  }
-
-  $('logout-btn').onclick = logout;
-  function logout() {
-    localStorage.removeItem('ap_token');
-    token = null;
-    location.reload();
-  }
-
-  function newSessionId() {
-    return Math.random().toString(36).slice(2) + Date.now().toString(36);
-  }
-
-  async function post(path, body) {
-    try {
-      const res = await fetch(WORKER + path, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      return await res.json();
-    } catch {
-      return { success: false, message: 'Network error. Please try again.' };
-    }
   }
 </script>
 </body>
