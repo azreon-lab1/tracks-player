@@ -124,7 +124,7 @@
     $('otp-msg').textContent = 'Verifying…';
     $('otp-msg').className   = 'msg';
     try {
-      const res  = await post('/auth/verify-otp', { email, otp });
+      const res  = await post('/auth/verify-otp', { email, code: otp });
       const data = await res.json();
       if (res.ok && data.token) {
         localStorage.setItem('ap_token', data.token);
