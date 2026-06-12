@@ -21,6 +21,8 @@ const HEADER_IMAGE_FILTER_DEFAULT = 'brightness(0) invert(1)';
 
   const height = (typeof HEADER_IMAGE_HEIGHT !== 'undefined' && HEADER_IMAGE_HEIGHT) || HEADER_IMAGE_HEIGHT_DEFAULT;
   img.style.maxHeight = height;
+  img.style.width     = 'auto';
+  img.style.maxWidth  = '100%';
 
   const filter = (typeof HEADER_IMAGE_FILTER !== 'undefined' && HEADER_IMAGE_FILTER) || HEADER_IMAGE_FILTER_DEFAULT;
   if (filter) img.style.filter = filter;
