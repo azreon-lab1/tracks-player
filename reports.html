@@ -168,7 +168,10 @@
   const REPORT_SAME_ORIGIN = true;
 
   const token = localStorage.getItem('ap_token');
-  if (!token) { location.replace('index.html'); }
+  if (!token) {
+    const _rp = new URLSearchParams(location.search).get('report');
+    location.replace(_rp ? 'index.html?report=' + encodeURIComponent(_rp) : 'index.html');
+  }
 
   let isAdmin              = false;
   let currentReportBlobUrl = null;
