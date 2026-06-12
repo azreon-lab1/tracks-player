@@ -78,6 +78,7 @@
   } else {
     $('startup-loading').style.display = 'none';
     $('auth-section').style.display    = 'block';
+    $('email-input').focus();
   }
 
   function redirectAfterAuth() {
@@ -139,6 +140,10 @@
       $('otp-msg').className   = 'msg err';
     } finally { this.disabled = false; }
   };
+
+  $('email-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') $('send-btn').click();
+  });
 
   $('otp-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') $('verify-btn').click();
