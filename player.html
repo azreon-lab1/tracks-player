@@ -82,7 +82,7 @@
 
   <div id="header-banner" style="display:none;margin-bottom:16px">
     <img id="header-img" src="" alt="" draggable="false"
-         style="width:100%;max-height:100px;object-fit:cover;border-radius:12px;display:block;pointer-events:none;-webkit-user-select:none;user-select:none;">
+         style="width:100%;object-fit:cover;border-radius:12px;display:block;pointer-events:none;-webkit-user-select:none;user-select:none;">
   </div>
 
   <div id="startup-loading">
@@ -158,6 +158,8 @@
   };
 
   const HEADER_IMAGE_URL      = '';  // page-specific banner; '' = use HEADER_IMAGE_DEFAULT in ui.js
+  const HEADER_IMAGE_HEIGHT   = '';  // '' = use HEADER_IMAGE_HEIGHT_DEFAULT in ui.js (currently 70px)
+  const HEADER_IMAGE_FILTER   = '';  // '' = use HEADER_IMAGE_FILTER_DEFAULT in ui.js (currently white)
 
   const DEFAULT_MODE          = 'stream';
   const MODE_TOGGLE_POSITION  = 'bottom';
