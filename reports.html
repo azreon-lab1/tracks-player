@@ -120,6 +120,12 @@
           <button id="scope-admin"       onclick="setScope('admin')"       style="flex:1;padding:8px;border:2px solid #ddd;border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer">Admin</button>
         </div>
       </div>
+      <div id="notify-row" style="display:none;margin-top:10px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:.88rem;color:var(--text);cursor:pointer">
+          <input type="checkbox" id="notify-check" style="width:auto;margin:0">
+          Notify participant by email
+        </label>
+      </div>
       <button class="primary" id="upload-btn" disabled style="margin-top:12px">Upload</button>
       <div id="upload-msg" class="msg"></div>
     </div>
@@ -440,6 +446,8 @@
     $('scope-admin').style.cssText = s === 'admin'
       ? 'flex:1;padding:8px;border:2px solid var(--primary);border-radius:8px;font-size:.85rem;background:#f5f1eb;cursor:pointer;font-weight:600;color:var(--primary)'
       : 'flex:1;padding:8px;border:2px solid #ddd;border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer';
+    $('notify-row').style.display = s === 'participant' ? 'block' : 'none';
+    if (s !== 'participant') $('notify-check').checked = false;
   }
 
   $('upload-btn').onclick = async function() {
@@ -451,6 +459,7 @@
     const form = new FormData();
     form.append('file', uploadFile);
     form.append('scope', uploadScope);
+    form.append('notify', $('notify-check').checked ? '1' : '0');
 
     try {
       const res  = await fetch(WORKER + '/admin/reports', {
@@ -463,9 +472,11 @@
         $('upload-msg').textContent = 'Uploaded successfully.';
         $('upload-msg').className   = 'msg';
         $('upload-file').value      = '';
-        $('upload-summary').style.display = 'none';
-        $('file-pick-label').textContent  = 'Select HTML file';
-        $('scope-row').style.display      = 'none';
+        $('upload-summary').style.display  = 'none';
+        $('file-pick-label').textContent   = 'Select HTML file';
+        $('scope-row').style.display       = 'none';
+        $('notify-row').style.display      = 'none';
+        $('notify-check').checked          = false;
         uploadFile   = null;
         uploadScope  = 'admin';
         adminReports = [];
