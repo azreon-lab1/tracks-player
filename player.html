@@ -154,8 +154,14 @@
 
   const DEFAULT_MODE          = 'stream';
   const MODE_TOGGLE_POSITION  = 'bottom';
-  const SINGLE_TRACK_HIDES_LIST  = true;
-  const SINGLE_TRACK_SHOW_MODE   = false;
+  const SINGLE_TRACK_HIDES_LIST = true;
+  const SINGLE_TRACK_HIDE = [
+    'track-list-card',
+    'reports-btn',
+    'mode-hint',
+    // 'mode-card-bottom',
+    // 'mode-toggle',
+  ];
 
   let activeMode = localStorage.getItem('ap_mode') || DEFAULT_MODE;
   if (DEFAULT_MODE === 'hybrid') activeMode = 'hybrid';
@@ -233,16 +239,9 @@
         const el = list.querySelector(`[data-track-code="${code}"]`);
         playTrack(match, el);
         if (SINGLE_TRACK_HIDES_LIST) {
-          const listCard = $('track-list-card');
-          if (listCard) listCard.style.display = 'none';
-          $('reports-btn').style.display = 'none';
-          if (!SINGLE_TRACK_SHOW_MODE) {
-            const modeCard   = $('mode-card-bottom');
-            const modeToggle = $('mode-toggle');
-            const modeHint   = $('mode-hint');
-            if (modeCard)   modeCard.style.display   = 'none';
-            if (modeToggle) modeToggle.style.display = 'none';
-            if (modeHint)   modeHint.style.display   = 'none';
+          for (const id of SINGLE_TRACK_HIDE) {
+            const el = $(id);
+            if (el) el.style.display = 'none';
           }
         }
       } else {
