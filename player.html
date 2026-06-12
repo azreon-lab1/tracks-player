@@ -154,13 +154,17 @@
 
   const DEFAULT_MODE          = 'stream';
   const MODE_TOGGLE_POSITION  = 'bottom';
-  const SINGLE_TRACK_HIDES_LIST = true;
+  const SINGLE_TRACK_HIDES_LIST  = true;
+  const SINGLE_TRACK_SHOW_MODE   = false;
 
   let activeMode = localStorage.getItem('ap_mode') || DEFAULT_MODE;
   if (DEFAULT_MODE === 'hybrid') activeMode = 'hybrid';
 
   const token = localStorage.getItem('ap_token');
-  if (!token) { location.replace('index.html'); }
+  if (!token) {
+    const _tp = new URLSearchParams(location.search).get('track');
+    location.replace(_tp ? 'index.html?track=' + encodeURIComponent(_tp) : 'index.html');
+  }
 
   let currentTrack    = null;
   let sessionId       = newSessionId();
@@ -229,14 +233,17 @@
         const el = list.querySelector(`[data-track-code="${code}"]`);
         playTrack(match, el);
         if (SINGLE_TRACK_HIDES_LIST) {
-          const listCard  = $('track-list-card');
-          const modeCard  = $('mode-card-bottom');
-          const modeToggle = $('mode-toggle');
-          if (listCard)  listCard.style.display  = 'none';
-          if (modeCard)  modeCard.style.display  = 'none';
-          if (modeToggle) modeToggle.style.display = 'none';
-          const modeHint = $('mode-hint');
-          if (modeHint) modeHint.style.display = 'none';
+          const listCard = $('track-list-card');
+          if (listCard) listCard.style.display = 'none';
+          $('reports-btn').style.display = 'none';
+          if (!SINGLE_TRACK_SHOW_MODE) {
+            const modeCard   = $('mode-card-bottom');
+            const modeToggle = $('mode-toggle');
+            const modeHint   = $('mode-hint');
+            if (modeCard)   modeCard.style.display   = 'none';
+            if (modeToggle) modeToggle.style.display = 'none';
+            if (modeHint)   modeHint.style.display   = 'none';
+          }
         }
       } else {
         $('now-playing').textContent = UI.TRACK_NOT_AVAILABLE;
