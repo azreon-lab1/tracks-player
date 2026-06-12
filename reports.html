@@ -252,7 +252,8 @@
     } else {
       hdr.innerHTML =
         `<span style="flex:1">Report</span>` +
-        `<span style="width:78px;text-align:right">Date</span>`;
+        `<span style="width:76px;text-align:right">Date</span>` +
+        `<span style="width:22px;text-align:right">#</span>`;
     }
     container.appendChild(hdr);
 
@@ -278,7 +279,8 @@
       } else {
         div.innerHTML =
           `<span class="col-title">${r.title}</span>` +
-          `<span class="col-date">${r.report_date ?? ''}</span>`;
+          `<span class="col-date">${r.report_date ?? ''}</span>` +
+          `<span class="col-num">${r.report_number ?? ''}</span>`;
       }
       div.onclick = () => openReport(r.id, r.title);
       container.appendChild(div);
