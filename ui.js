@@ -4,7 +4,9 @@
 // Set HEADER_IMAGE_DEFAULT to a filename or URL to show a banner on all
 // pages. Each page can override with its own HEADER_IMAGE_URL constant
 // (empty string = fall back to this default).
-const HEADER_IMAGE_DEFAULT = 'AZREON_gold_1920x480.png';
+const HEADER_IMAGE_DEFAULT        = 'AZREON_gold_1920x480.png';
+const HEADER_IMAGE_HEIGHT_DEFAULT = '70px';
+const HEADER_IMAGE_FILTER_DEFAULT = 'brightness(0) invert(1)';
 
 (function() {
   // null in a page's HEADER_IMAGE_URL = explicitly disabled for that page.
@@ -16,6 +18,13 @@ const HEADER_IMAGE_DEFAULT = 'AZREON_gold_1920x480.png';
   const banner = document.getElementById('header-banner');
   const img    = document.getElementById('header-img');
   if (!banner || !img) return;
+
+  const height = (typeof HEADER_IMAGE_HEIGHT !== 'undefined' && HEADER_IMAGE_HEIGHT) || HEADER_IMAGE_HEIGHT_DEFAULT;
+  img.style.maxHeight = height;
+
+  const filter = (typeof HEADER_IMAGE_FILTER !== 'undefined' && HEADER_IMAGE_FILTER) || HEADER_IMAGE_FILTER_DEFAULT;
+  if (filter) img.style.filter = filter;
+
   img.src = url;
   banner.style.display = 'block';
 })();
