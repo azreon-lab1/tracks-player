@@ -149,8 +149,8 @@
 
 <div id="report-viewer">
   <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #eee;background:#fff;flex-shrink:0">
-    <button onclick="closeReport()" style="background:none;border:none;font-size:1rem;color:#1A4F8A;cursor:pointer;padding:4px 8px;flex-shrink:0;">&#8592; Back</button>
-    <div style="width:1px;height:18px;background:#ddd;flex-shrink:0;"></div>
+    <button id="viewer-back-btn" onclick="closeReport()" style="background:none;border:none;font-size:1rem;color:#1A4F8A;cursor:pointer;padding:4px 8px;flex-shrink:0;">&#8592; Back</button>
+    <div id="viewer-back-divider" style="width:1px;height:18px;background:#ddd;flex-shrink:0;"></div>
     <span id="report-viewer-title" style="font-size:.95rem;font-weight:500;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
   </div>
   <div id="report-loading" style="display:none;flex:1;align-items:center;justify-content:center;background:#fff"></div>
@@ -203,6 +203,10 @@
     const data = await res.json();
     isAdmin = !!data.is_admin;
     allReports = data.reports || [];
+
+    const showBack = isAdmin || allReports.length > 0;
+    $('viewer-back-btn').style.display     = showBack ? '' : 'none';
+    $('viewer-back-divider').style.display = showBack ? '' : 'none';
 
     $('startup-loading').style.display = 'none';
     $('main-content').style.display    = 'block';
