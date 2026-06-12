@@ -30,11 +30,14 @@
     button.primary { width: 100%; padding: 14px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-top: 8px; }
     button.primary:disabled { opacity: .5; cursor: not-allowed; }
     button.secondary { width: 100%; padding: 14px; background: var(--secondary); color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-top: 8px; }
-    .logout-wrap { position: relative; margin-top: 8px; }
-    .logout-tip { display: none; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.82); color: #fff; font-size: .78rem; padding: 6px 14px; border-radius: 6px; white-space: nowrap; pointer-events: none; z-index: 10; }
-    .logout-tip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: rgba(0,0,0,.82); }
-    .logout-wrap:hover .logout-tip { display: block; }
-    .logout-wrap #logout-btn { width: 100%; margin-top: 0; }
+    .options-wrap { position: relative; text-align: center; margin-top: 12px; }
+    .options-btn { background: rgba(0,0,0,.12); border: none; color: rgba(255,255,255,.65); font-size: 1.3rem; line-height: 1; cursor: pointer; padding: 6px 22px; border-radius: 20px; transition: background .15s, color .15s; }
+    .options-btn:hover, .options-btn:active { background: rgba(0,0,0,.22); color: #fff; }
+    .options-menu { display: none; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.18); min-width: 200px; overflow: hidden; z-index: 100; }
+    .options-email { font-size: .78rem; color: #aaa; padding: 10px 16px 9px; border-bottom: 1px solid #f2f2f2; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .options-item { display: block; width: 100%; padding: 13px 16px; background: none; border: none; border-top: 1px solid #f2f2f2; text-align: left; font-size: .95rem; cursor: pointer; }
+    .options-item-danger { color: #c0392b; }
+    .options-item-danger:active { background: #fef5f5; }
     #now-playing { text-align: center; font-size: 1.3rem; font-weight: 700; color: var(--text); margin-bottom: 18px; }
     .player { display: flex; flex-direction: column; gap: 12px; }
     .player-controls { display: flex; align-items: center; gap: 12px; }
@@ -124,9 +127,12 @@
       <div id="mode-slot-bottom"></div>
     </div>
     <button class="secondary" id="reports-btn" style="display:none">Reports</button>
-    <div class="logout-wrap">
-      <div class="logout-tip" id="logout-tip"></div>
-      <button class="secondary" id="logout-btn">Log Out</button>
+    <div class="options-wrap" id="options-wrap">
+      <button class="options-btn" id="options-btn" aria-label="Options" aria-expanded="false">⋮</button>
+      <div class="options-menu" id="options-menu">
+        <div class="options-email" id="options-email"></div>
+        <button class="options-item options-item-danger" id="logout-btn">Log Out</button>
+      </div>
     </div>
   </div>
 
@@ -640,21 +646,21 @@
 
   $('reports-btn').onclick = () => location.href = 'reports.html';
 
-  // Email tooltip
+  // Options menu
   const _storedEmail = localStorage.getItem('ap_email');
-  if (_storedEmail) {
-    $('logout-tip').textContent = _storedEmail;
-  } else {
-    $('logout-tip').style.display = 'none';
-  }
-  $('logout-btn').addEventListener('touchstart', e => {
-    const tip = $('logout-tip');
-    if (_storedEmail && tip.style.display !== 'block') {
-      e.preventDefault();
-      tip.style.display = 'block';
-      setTimeout(() => { tip.style.display = ''; }, 2500);
-    }
-  }, { passive: false });
+  if (_storedEmail) $('options-email').textContent = _storedEmail;
+  else $('options-email').style.display = 'none';
+
+  $('options-btn').onclick = e => {
+    e.stopPropagation();
+    const open = $('options-menu').style.display === 'block';
+    $('options-menu').style.display = open ? 'none' : 'block';
+    $('options-btn').setAttribute('aria-expanded', String(!open));
+  };
+  document.addEventListener('click', () => {
+    $('options-menu').style.display = 'none';
+    $('options-btn').setAttribute('aria-expanded', 'false');
+  });
 
   $('logout-btn').onclick = logout;
   function logout() {
