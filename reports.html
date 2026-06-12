@@ -329,6 +329,7 @@
   async function openReport(id, title) {
     const found = allReports.find(r => r.id === id);
     showReportLoading(title || (found ? found.title : ''));
+    history.replaceState(null, '', '?report=' + id);
     try {
       await Promise.all([
         fetchReportHtml(`${WORKER}/report?id=${id}`),
@@ -343,6 +344,7 @@
   async function openReportByDate(date, number) {
     const found = allReports.find(r => r.report_date === date && r.report_number == number);
     showReportLoading(found ? found.title : 'Report');
+    history.replaceState(null, '', '?report=' + encodeURIComponent(date + '-' + number));
     try {
       await Promise.all([
         fetchReportHtml(`${WORKER}/report?date=${encodeURIComponent(date)}&number=${encodeURIComponent(number)}`),
@@ -366,6 +368,7 @@
   function closeReport() {
     $('report-viewer').classList.remove('open');
     $('report-iframe').src = 'about:blank';
+    history.replaceState(null, '', location.pathname);
     if (currentReportBlobUrl) {
       URL.revokeObjectURL(currentReportBlobUrl);
       currentReportBlobUrl = null;
