@@ -124,6 +124,21 @@
       <div id="upload-msg" class="msg"></div>
     </div>
 
+    <div class="card" id="access-card" style="display:none">
+      <h2>Access Management</h2>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+        <select id="access-report-select" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:.9rem;color:#333">
+          <option value="">Select report…</option>
+        </select>
+        <select id="access-user-select" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:.9rem;color:#333">
+          <option value="">Select user…</option>
+        </select>
+        <button class="primary" id="access-grant-btn" disabled style="margin-top:0">Grant Access</button>
+        <div id="access-grant-msg" class="msg"></div>
+      </div>
+      <div id="access-grants-list"><p class="msg">Loading…</p></div>
+    </div>
+
     <div class="logout-wrap">
       <div class="logout-tip" id="logout-tip">—</div>
       <button class="secondary" id="logout-btn">Log Out</button>
@@ -195,6 +210,7 @@
       $('admin-reports-card').style.display = 'block';
       $('upload-card').style.display        = 'block';
       loadAdminReports();
+      loadAccessSection();
     }
 
     if (reportParam) openReportByParam(reportParam);
@@ -299,6 +315,7 @@
     const knownIds = new Set(allReports.map(r => r.id));
     adminReports.forEach(r => { if (!knownIds.has(r.id)) allReports.push(r); });
     renderSorted();
+    populateReportSelect();
   }
 
   async function fetchReportHtml(url) {
@@ -451,6 +468,135 @@
       this.disabled = false;
     }
   };
+
+  // ── Access Management ────────────────────────────────────────────────
+  let allUsers   = [];
+  let allGrants  = [];
+
+  async function loadAccessSection() {
+    $('access-card').style.display = 'block';
+    const [usersRes, grantsRes] = await Promise.all([
+      fetch(WORKER + '/admin/users',         { headers: { Authorization: 'Bearer ' + token } }),
+      fetch(WORKER + '/admin/report-access', { headers: { Authorization: 'Bearer ' + token } }),
+    ]);
+    if (usersRes.ok) {
+      const d = await usersRes.json();
+      allUsers = d.users || [];
+      const sel = $('access-user-select');
+      allUsers.forEach(u => {
+        const opt = document.createElement('option');
+        opt.value       = u.email;
+        opt.textContent = `${u.email} (${u.user_id})`;
+        sel.appendChild(opt);
+      });
+    }
+    if (grantsRes.ok) {
+      const d = await grantsRes.json();
+      allGrants = d.grants || [];
+    }
+    renderGrants();
+    syncGrantBtn();
+  }
+
+  function populateReportSelect() {
+    const sel = $('access-report-select');
+    // remove all but the placeholder
+    while (sel.options.length > 1) sel.remove(1);
+    adminReports.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value       = r.id;
+      opt.textContent = `[${r.id}] ${r.title}`;
+      sel.appendChild(opt);
+    });
+  }
+
+  function renderGrants() {
+    const container = $('access-grants-list');
+    if (!allGrants.length) {
+      container.innerHTML = '<p class="msg">No access grants yet.</p>';
+      return;
+    }
+    container.innerHTML = '';
+    const hdr = document.createElement('div');
+    hdr.className = 'report-list-header';
+    hdr.innerHTML =
+      `<span style="flex:1;min-width:0">Report</span>` +
+      `<span style="flex:1;min-width:0">User</span>` +
+      `<span style="width:70px;text-align:right;flex-shrink:0">Date</span>` +
+      `<span style="width:58px;flex-shrink:0"></span>`;
+    container.appendChild(hdr);
+    allGrants.forEach(g => {
+      const row = document.createElement('div');
+      row.className = 'report-item';
+      row.style.cssText = 'cursor:default';
+      row.innerHTML =
+        `<span class="col-title" style="flex:1;font-size:.82rem">${g.report_title}</span>` +
+        `<span class="col-title" style="flex:1;font-size:.82rem;color:var(--muted)">${g.email}</span>` +
+        `<span class="col-date" style="width:70px">${(g.created_at || '').slice(0,10)}</span>` +
+        `<span style="width:58px;flex-shrink:0;text-align:right">` +
+          `<button onclick="revokeAccess(${g.report_id},'${g.user_id}')" ` +
+            `style="font-size:.75rem;padding:3px 8px;background:none;border:1px solid #ddd;border-radius:6px;color:var(--err);cursor:pointer">` +
+            `Remove</button></span>`;
+      container.appendChild(row);
+    });
+  }
+
+  function syncGrantBtn() {
+    $('access-grant-btn').disabled =
+      !$('access-report-select').value || !$('access-user-select').value;
+  }
+
+  $('access-report-select').addEventListener('change', syncGrantBtn);
+  $('access-user-select').addEventListener('change', syncGrantBtn);
+
+  $('access-grant-btn').onclick = async function() {
+    const reportId = parseInt($('access-report-select').value, 10);
+    const email    = $('access-user-select').value;
+    if (!reportId || !email) return;
+    this.disabled = true;
+    $('access-grant-msg').textContent = '';
+    $('access-grant-msg').className   = 'msg';
+    try {
+      const res  = await fetch(WORKER + '/admin/report-access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ report_id: reportId, email }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        $('access-grant-msg').textContent = data.message || 'Access granted.';
+        $('access-report-select').value = '';
+        $('access-user-select').value   = '';
+        syncGrantBtn();
+        const grantsRes = await fetch(WORKER + '/admin/report-access', { headers: { Authorization: 'Bearer ' + token } });
+        if (grantsRes.ok) { allGrants = (await grantsRes.json()).grants || []; renderGrants(); }
+      } else {
+        $('access-grant-msg').textContent = data.error || 'Failed.';
+        $('access-grant-msg').className   = 'msg err';
+        this.disabled = false;
+      }
+    } catch {
+      $('access-grant-msg').textContent = 'Network error.';
+      $('access-grant-msg').className   = 'msg err';
+      this.disabled = false;
+    }
+  };
+
+  async function revokeAccess(reportId, userId) {
+    if (!confirm('Remove this access grant?')) return;
+    const res  = await fetch(WORKER + '/admin/report-access', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ report_id: reportId, user_id: userId }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      allGrants = allGrants.filter(g => !(g.report_id === reportId && g.user_id === userId));
+      renderGrants();
+    } else {
+      alert(data.error || 'Failed to revoke.');
+    }
+  }
 
   // Email tooltip — tap toggles briefly on mobile, hover works on desktop
   $('logout-btn').addEventListener('touchstart', e => {
