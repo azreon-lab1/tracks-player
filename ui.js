@@ -1,5 +1,22 @@
 // Shared UI utilities
 
+// ── Header banner ─────────────────────────────────────────────────────
+// Set HEADER_IMAGE_DEFAULT to a filename or URL to show a banner on all
+// pages. Each page can override with its own HEADER_IMAGE_URL constant
+// (empty string = fall back to this default).
+const HEADER_IMAGE_DEFAULT = '';
+
+(function() {
+  const url = (typeof HEADER_IMAGE_URL !== 'undefined' && HEADER_IMAGE_URL)
+            || HEADER_IMAGE_DEFAULT;
+  if (!url) return;
+  const banner = document.getElementById('header-banner');
+  const img    = document.getElementById('header-img');
+  if (!banner || !img) return;
+  img.src = url;
+  banner.style.display = 'block';
+})();
+
 function showLoadingBar(container, message) {
   if (typeof container === 'string') container = document.getElementById(container);
   if (!container) return;

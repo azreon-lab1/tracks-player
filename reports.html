@@ -80,6 +80,11 @@
 <body>
 <div class="container">
 
+  <div id="header-banner" style="display:none;margin-bottom:16px">
+    <img id="header-img" src="" alt="" draggable="false"
+         style="width:100%;max-height:160px;object-fit:cover;border-radius:12px;display:block;pointer-events:none;-webkit-user-select:none;user-select:none;">
+  </div>
+
   <div id="startup-loading">
     <div class="card" style="text-align:center;padding:32px 24px;display:inline-block;min-width:200px">
       <div class="startup-bar" style="margin:0 auto 12px"></div>
@@ -171,6 +176,7 @@
   // Allow in-page navigation (sticky nav, anchor links, CDN scripts) inside report iframes.
   // Trade-off: with allow-scripts + allow-same-origin, a report's JS can reach the parent frame.
   // Safe as long as only trusted HTML files are uploaded by admins.
+  const HEADER_IMAGE_URL   = '';  // page-specific banner; '' = use HEADER_IMAGE_DEFAULT in ui.js
   const REPORT_SAME_ORIGIN = true;
 
   const token = localStorage.getItem('ap_token');
