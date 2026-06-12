@@ -198,7 +198,12 @@
     const res = await fetch(WORKER + '/reports', {
       headers: { Authorization: 'Bearer ' + token }
     });
-    if (res.status === 401) { logout(); return; }
+    if (res.status === 401) {
+      localStorage.removeItem('ap_token');
+      localStorage.removeItem('ap_email');
+      location.replace(reportParam ? 'index.html?report=' + encodeURIComponent(reportParam) : 'index.html');
+      return;
+    }
 
     const data = await res.json();
     isAdmin = !!data.is_admin;

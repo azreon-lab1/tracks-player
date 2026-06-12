@@ -203,7 +203,13 @@
     const res = await fetch(WORKER + '/tracks', {
       headers: { Authorization: 'Bearer ' + token }
     });
-    if (res.status === 401) { logout(); return; }
+    if (res.status === 401) {
+      localStorage.removeItem('ap_token');
+      localStorage.removeItem('ap_email');
+      const _tc = new URLSearchParams(location.search).get('track');
+      location.replace(_tc ? 'index.html?track=' + encodeURIComponent(_tc) : 'index.html');
+      return;
+    }
     const data = await res.json();
 
     if (data.settings?.log_heartbeat !== undefined) {
