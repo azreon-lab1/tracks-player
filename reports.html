@@ -208,13 +208,6 @@
   init();
 
   async function init() {
-    const email = localStorage.getItem('ap_email');
-    if (email) {
-      $('logout-tip').textContent = email;
-    } else {
-      $('logout-tip').style.display = 'none'; // no email stored — suppress tooltip entirely
-    }
-
     const res = await fetch(WORKER + '/reports', {
       headers: { Authorization: 'Bearer ' + token }
     });
