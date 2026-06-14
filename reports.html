@@ -47,11 +47,14 @@
     .col-num   { width: 22px;  flex-shrink: 0; font-size: .76rem; color: var(--muted); text-align: right; }
     .col-proto { width: 52px;  flex-shrink: 0; font-size: .76rem; color: var(--muted); text-align: center; }
     .col-user  { width: 46px;  flex-shrink: 0; font-size: .76rem; color: var(--muted); text-align: right; }
-    .logout-wrap { position: relative; margin-top: 8px; }
-    .logout-tip { display: none; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.82); color: #fff; font-size: .78rem; padding: 6px 14px; border-radius: 6px; white-space: nowrap; pointer-events: none; z-index: 10; }
-    .logout-tip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: rgba(0,0,0,.82); }
-    .logout-wrap:hover .logout-tip { display: block; }
-    .logout-wrap #logout-btn { width: 100%; margin-top: 0; }
+    .options-wrap { position: relative; flex-shrink: 0; }
+    .options-btn { background: none; border: none; color: rgba(255,255,255,.75); font-size: 1.6rem; font-weight: 700; line-height: 1; cursor: pointer; padding: 4px 6px; border-radius: 8px; transition: color .15s; }
+    .options-btn:hover, .options-btn:active { color: #fff; }
+    .options-menu { display: none; position: absolute; top: calc(100% + 8px); right: 0; background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.18); min-width: 200px; overflow: hidden; z-index: 100; }
+    .options-email { font-size: .78rem; color: #aaa; padding: 10px 16px 9px; border-bottom: 1px solid #f2f2f2; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .options-item { display: block; width: 100%; padding: 13px 16px; background: none; border: none; border-top: 1px solid #f2f2f2; text-align: left; font-size: .95rem; cursor: pointer; }
+    .options-item-danger { color: #c0392b; }
+    .options-item-danger:active { background: #fef5f5; }
     #startup-loading { display: flex; align-items: center; justify-content: center; min-height: 60vh; }
     .startup-bar { width: 200px; height: 4px; background: rgba(255,255,255,0.3); border-radius: 2px; overflow: hidden; }
     .startup-bar::after { content: ''; display: block; height: 100%; width: 40%; background: var(--accent); border-radius: 2px; animation: slide 1.2s ease-in-out infinite; }
@@ -92,6 +95,13 @@
       <a href="player.html">&#8592; Player</a>
       <div class="divider"></div>
       <h1>Reports</h1>
+      <div class="options-wrap" id="options-wrap">
+        <button class="options-btn" id="options-btn" aria-label="Options" aria-expanded="false">⋮</button>
+        <div class="options-menu" id="options-menu">
+          <div class="options-email" id="options-email"></div>
+          <button class="options-item options-item-danger" id="logout-btn">Log Out</button>
+        </div>
+      </div>
     </div>
 
     <div id="header-banner" style="display:none;margin-bottom:16px">
@@ -150,10 +160,6 @@
       <div id="access-grants-list"><p class="msg">Loading…</p></div>
     </div>
 
-    <div class="logout-wrap">
-      <div class="logout-tip" id="logout-tip">—</div>
-      <button class="secondary" id="logout-btn">Log Out</button>
-    </div>
   </div>
 
 </div>
@@ -631,15 +637,21 @@
     }
   }
 
-  // Email tooltip — tap toggles briefly on mobile, hover works on desktop
-  $('logout-btn').addEventListener('touchstart', e => {
-    const tip = $('logout-tip');
-    if (tip.style.display !== 'block') {
-      e.preventDefault();
-      tip.style.display = 'block';
-      setTimeout(() => { tip.style.display = ''; }, 2500);
-    }
-  }, { passive: false });
+  // Options menu
+  const email = localStorage.getItem('ap_email');
+  if (email) $('options-email').textContent = email;
+  else $('options-email').style.display = 'none';
+
+  $('options-btn').onclick = e => {
+    e.stopPropagation();
+    const open = $('options-menu').style.display === 'block';
+    $('options-menu').style.display = open ? 'none' : 'block';
+    $('options-btn').setAttribute('aria-expanded', String(!open));
+  };
+  document.addEventListener('click', () => {
+    $('options-menu').style.display = 'none';
+    $('options-btn').setAttribute('aria-expanded', 'false');
+  });
 
   $('logout-btn').onclick = logout;
   function logout() {
