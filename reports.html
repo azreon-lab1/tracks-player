@@ -287,8 +287,8 @@
         if (isAdminRow) {
           div.innerHTML =
             `<span class="col-id">${r.id}</span>` +
-            `<span class="col-title" style="flex:1">${r.title}</span>` +
-            `<span class="col-date" style="text-align:right">${r.report_date ?? '—'}</span>`;
+            `<span class="col-title">${r.title}</span>` +
+            (r.report_date ? `<span class="col-date" style="text-align:right">${r.report_date}</span>` : '');
         } else {
           div.innerHTML =
             `<span class="col-id">${r.id}</span>` +
