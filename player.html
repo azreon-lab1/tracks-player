@@ -32,7 +32,7 @@
     button.secondary { width: 100%; padding: 14px; background: var(--secondary); color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-top: 8px; }
     .options-wrap { position: absolute; top: 12px; right: 12px; }
     .options-btn { background: rgba(0,0,0,.07); border: none; color: #888; font-size: 1.6rem; font-weight: 700; line-height: 1; cursor: pointer; padding: 4px 8px; border-radius: 8px; transition: color .15s, background .15s; }
-    .options-btn:hover, .options-btn:active { color: #555; background: rgba(0,0,0,.13); }
+    .options-btn:hover, .options-btn:active, .options-btn.open { color: #555; background: rgba(0,0,0,.13); }
     .options-menu { display: none; position: absolute; top: calc(100% + 4px); right: 0; background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.18); min-width: 200px; overflow: hidden; z-index: 100; }
     .options-email { font-size: .78rem; color: #aaa; padding: 10px 16px 9px; border-bottom: 1px solid #f2f2f2; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .options-item { display: block; width: 100%; padding: 13px 16px; background: none; border: none; border-top: 1px solid #f2f2f2; text-align: left; font-size: .95rem; cursor: pointer; }
@@ -656,10 +656,12 @@
     const open = $('options-menu').style.display === 'block';
     $('options-menu').style.display = open ? 'none' : 'block';
     $('options-btn').setAttribute('aria-expanded', String(!open));
+    $('options-btn').classList.toggle('open', !open);
   };
   document.addEventListener('click', () => {
     $('options-menu').style.display = 'none';
     $('options-btn').setAttribute('aria-expanded', 'false');
+    $('options-btn').classList.remove('open');
   });
 
   $('logout-btn').onclick = logout;
