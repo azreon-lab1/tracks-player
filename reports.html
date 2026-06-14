@@ -31,6 +31,7 @@
     button.secondary:hover { background: var(--secondary-dark); }
     .msg { font-size: .9rem; color: var(--muted); text-align: center; margin-top: 8px; }
     .err { color: var(--err); }
+    .ok  { color: #27ae60; font-weight: 600; display: inline-block; background: #eafaf1; border-radius: 20px; padding: 5px 14px; }
     .report-list-header { display: flex; align-items: center; gap: 8px; padding: 0 0 7px; border-bottom: 2px solid #f0f0f0; margin-bottom: 4px; }
     .report-list-header span { font-size: .67rem; font-weight: 700; color: #bbb; text-transform: uppercase; letter-spacing: .04em; cursor: pointer; user-select: none; overflow: hidden; white-space: nowrap; }
     .report-list-header span:hover { color: #999; }
@@ -477,7 +478,7 @@
       const data = await res.json();
       if (res.ok) {
         $('upload-msg').textContent = data.message || 'Uploaded successfully.';
-        $('upload-msg').className   = 'msg';
+        $('upload-msg').className   = 'msg ok';
         $('upload-file').value      = '';
         $('upload-summary').style.display  = 'none';
         $('file-pick-label').textContent   = 'Select HTML file';
