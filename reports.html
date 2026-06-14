@@ -476,7 +476,7 @@
       });
       const data = await res.json();
       if (res.ok) {
-        $('upload-msg').textContent = 'Uploaded successfully.';
+        $('upload-msg').textContent = data.message || 'Uploaded successfully.';
         $('upload-msg').className   = 'msg';
         $('upload-file').value      = '';
         $('upload-summary').style.display  = 'none';
