@@ -40,6 +40,13 @@
     .options-item-danger:active { background: #fef5f5; }
     #now-playing { text-align: center; font-size: 1.3rem; font-weight: 700; color: var(--text); margin-bottom: 18px; padding-right: 28px; }
     .player { display: flex; flex-direction: column; gap: 12px; }
+    #my-reports-card h2 { font-size: 1.1rem; color: #333; margin-bottom: 14px; }
+    .my-report-item { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid #eee; cursor: pointer; min-width: 0; }
+    .my-report-item:last-child { border-bottom: none; }
+    .my-report-item:hover .my-col-title { color: var(--primary); text-decoration: underline; }
+    .my-col-title { flex: 1; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; font-size: .88rem; }
+    .my-col-date  { width: 76px; flex-shrink: 0; font-size: .76rem; color: var(--muted); text-align: right; }
+    .my-col-num   { width: 22px; flex-shrink: 0; font-size: .76rem; color: var(--muted); text-align: right; }
     .player-controls { display: flex; align-items: center; gap: 12px; }
     .btn-play { flex-shrink: 0; width: 42px; height: 42px; border-radius: 50%; background: var(--primary); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .15s; }
     .btn-play:hover { background: var(--primary-dark); }
@@ -133,6 +140,10 @@
     <div class="card" id="mode-card-bottom">
       <div id="mode-slot-bottom"></div>
     </div>
+    <div class="card" id="my-reports-card" style="display:none">
+      <h2>My Reports</h2>
+      <div id="my-reports-list"></div>
+    </div>
     <button class="secondary" id="reports-btn" style="display:none">Reports</button>
   </div>
 
@@ -173,10 +184,12 @@
   const SINGLE_TRACK_HIDE = [
     'track-list-card',
     'reports-btn',
+    'my-reports-card',
     'mode-hint',
     // 'mode-card-bottom',
     // 'mode-toggle',
   ];
+  const REPORTS_IN_PLAYER = true;  // true = My Reports card inline in player; false = Reports button → reports.html
 
   let activeMode = localStorage.getItem('ap_mode') || DEFAULT_MODE;
   if (DEFAULT_MODE === 'hybrid') activeMode = 'hybrid';
@@ -230,7 +243,15 @@
     if (data.settings?.log_heartbeat !== undefined) {
       LOG_HEARTBEAT = data.settings.log_heartbeat === '1';
     }
-    if (data.has_reports || data.is_admin) $('reports-btn').style.display = '';
+    if (data.is_admin) {
+      $('reports-btn').style.display = '';
+    } else if (data.has_reports) {
+      if (REPORTS_IN_PLAYER) {
+        loadMyReports();
+      } else {
+        $('reports-btn').style.display = '';
+      }
+    }
 
     $('startup-loading').style.display = 'none';
     $('player-section').style.display  = 'block';
@@ -645,6 +666,34 @@
   }
 
   $('reports-btn').onclick = () => location.href = 'reports.html';
+
+  async function loadMyReports() {
+    try {
+      const res = await fetch(WORKER + '/reports', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const reports = data.reports || [];
+      const list = $('my-reports-list');
+      if (!reports.length) {
+        list.innerHTML = '<p style="font-size:.9rem;color:var(--muted);text-align:center;padding:8px 0">No reports available.</p>';
+      } else {
+        list.innerHTML = '';
+        reports.forEach(r => {
+          const div = document.createElement('div');
+          div.className = 'my-report-item';
+          div.innerHTML =
+            `<span class="my-col-title">${r.title}</span>` +
+            (r.report_date   ? `<span class="my-col-date">${r.report_date}</span>`     : '') +
+            (r.report_number ? `<span class="my-col-num">${r.report_number}</span>`    : '');
+          div.onclick = () => location.href = 'reports.html?report=' + r.id;
+          list.appendChild(div);
+        });
+      }
+      $('my-reports-card').style.display = '';
+    } catch { /* silently skip if reports fail to load */ }
+  }
 
   // Options menu
   const _storedEmail = localStorage.getItem('ap_email');

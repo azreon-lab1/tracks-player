@@ -226,6 +226,9 @@
     const showBack = isAdmin || allReports.length > 0;
     $('viewer-back-btn').style.display     = showBack ? '' : 'none';
     $('viewer-back-divider').style.display = showBack ? '' : 'none';
+    if (!isAdmin && allReports.length > 0) {
+      $('viewer-back-btn').onclick = () => location.href = 'player.html';
+    }
 
     $('startup-loading').style.display = 'none';
     $('main-content').style.display    = 'block';
