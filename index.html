@@ -100,7 +100,7 @@
   }
 
   $('send-btn').onclick = async function() {
-    const email = $('email-input').value.trim();
+    const email = $('email-input').value.trim().toLowerCase();
     if (!email) { $('send-msg').textContent = 'Please enter your email.'; return; }
     this.disabled = true;
     $('send-msg').textContent = 'Sending…';
