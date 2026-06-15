@@ -6,13 +6,18 @@
   <title>Reports — Azreon Tracks Platform</title>
   <style>
     :root {
-      --bg:             #7f693a;
-      --bg-image:       none;
-      --primary:        #a15a24;
-      --primary-dark:   #7d4419;
-      --accent:         #d4a843;
-      --secondary:      #391e1e;
-      --secondary-dark: #2a1515;
+      --bg:             #0a0604;
+      --bg-image:       radial-gradient(ellipse at 85% 85%, rgba(127,105,58,.90) 0%, transparent 110%),
+                        radial-gradient(ellipse at 8% 10%, rgba(10,6,2,.85) 0%, transparent 45%),
+                        linear-gradient(145deg, #0a0604 0%, #1a1408 35%, #3a2e1a 60%, #7f693a 100%);
+      --primary:        #030e36;                                       /* ── upload button       ── */
+      --primary-dark:   color-mix(in srgb, var(--primary)   55%, #000);
+      --secondary:      #15032b;                                       /* ── grant access button ── */
+      --secondary-dark: color-mix(in srgb, var(--secondary) 55%, #000);
+      --tertiary:       #a15a24;                                       /* ── select file button  ── */
+      --tertiary-dark:  color-mix(in srgb, var(--tertiary)  75%, #000);
+      --loading-colour: #d4a843;                                       /* ── loading bar         ── */
+      --highlight:      #a2561b;                                       /* ── ids, headers, hover ── */
       --text:           #222;
       --muted:          #888;
       --err:            #c0392b;
@@ -29,20 +34,21 @@
     button.primary:disabled { opacity: .5; cursor: not-allowed; }
     button.secondary { width: 100%; padding: 14px; background: var(--secondary); color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-top: 8px; }
     button.secondary:hover { background: var(--secondary-dark); }
+    button.secondary:disabled { opacity: .5; cursor: not-allowed; }
     .msg { font-size: .9rem; color: var(--muted); text-align: center; margin-top: 8px; }
     .err { color: var(--err); font-weight: 600; display: inline-block; background: #fdecea; border-radius: 20px; padding: 5px 14px; }
     .ok  { color: #27ae60; font-weight: 600; display: table; margin: 8px auto 0; background: #eafaf1; border-radius: 20px; padding: 5px 14px; }
     .report-list-header { display: flex; align-items: center; gap: 8px; padding: 0 0 7px; border-bottom: 2px solid #f0f0f0; margin-bottom: 4px; }
     .report-list-header span { font-size: .67rem; font-weight: 700; color: #bbb; text-transform: uppercase; letter-spacing: .04em; cursor: pointer; user-select: none; overflow: hidden; white-space: nowrap; }
     .report-list-header span:hover { color: #999; }
-    .report-list-header span.sort-active { color: var(--primary); }
+    .report-list-header span.sort-active { color: var(--highlight); }
     .sort-arr { display: inline-block; width: 0; height: 0; margin-left: 4px; vertical-align: middle; }
     .sort-arr.asc  { border-left: 4px solid transparent; border-right: 4px solid transparent; border-bottom: 6px solid currentColor; }
     .sort-arr.desc { border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 6px solid currentColor; }
     .report-item { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--border); cursor: pointer; min-width: 0; }
     .report-item:last-child { border-bottom: none; }
-    .report-item:hover .col-title { color: var(--primary); text-decoration: underline; }
-    .col-id    { width: 34px;  flex-shrink: 0; font-size: .78rem; font-weight: 700; color: var(--primary); font-variant-numeric: tabular-nums; }
+    .report-item:hover .col-title { color: var(--highlight); text-decoration: underline; }
+    .col-id    { width: 34px;  flex-shrink: 0; font-size: .78rem; font-weight: 700; color: var(--highlight); font-variant-numeric: tabular-nums; }
     .col-title { flex: 1; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; font-size: .88rem; }
     .col-date  { width: 76px;  flex-shrink: 0; font-size: .76rem; color: var(--muted); text-align: right; }
     .col-num   { width: 22px;  flex-shrink: 0; font-size: .76rem; color: var(--muted); text-align: right; }
@@ -58,7 +64,7 @@
     .options-item-danger:active { background: #fef5f5; }
     #startup-loading { display: flex; align-items: center; justify-content: center; min-height: 60vh; }
     .startup-bar { width: 200px; height: 4px; background: rgba(255,255,255,0.3); border-radius: 2px; overflow: hidden; }
-    .startup-bar::after { content: ''; display: block; height: 100%; width: 40%; background: var(--accent); border-radius: 2px; animation: slide 1.2s ease-in-out infinite; }
+    .startup-bar::after { content: ''; display: block; height: 100%; width: 40%; background: var(--loading-colour); border-radius: 2px; animation: slide 1.2s ease-in-out infinite; }
     @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }
     .startup-label { font-size: .85rem; color: rgba(255,255,255,0.7); }
     #main-content { display: none; }
@@ -71,8 +77,8 @@
     #report-viewer.open { display: flex; }
     #upload-summary { display: none; font-size: .85rem; color: #555; margin-top: 8px; padding: 8px; background: #f5f5f5; border-radius: 6px; }
     #upload-msg { font-size: .9rem; text-align: center; margin-top: 8px; }
-    .file-pick-btn { display: block; width: 100%; padding: 14px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; text-align: center; margin-top: 8px; }
-    .file-pick-btn:hover { background: var(--primary-dark); }
+    .file-pick-btn { display: block; width: 100%; padding: 14px; background: var(--tertiary); color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; text-align: center; margin-top: 8px; }
+    .file-pick-btn:hover { background: var(--tertiary-dark); }
     #upload-file { display: none; }
     .page-header { display: flex; align-items: center; gap: 0; margin-bottom: 16px; }
     .page-header a { color: #fff; text-decoration: none; font-size: .9rem; opacity: .85; padding-right: 14px; flex-shrink: 0; }
@@ -155,7 +161,7 @@
         <select id="access-user-select" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:.9rem;color:#333">
           <option value="">Select user…</option>
         </select>
-        <button class="primary" id="access-grant-btn" disabled style="margin-top:0">Grant Access</button>
+        <button class="secondary" id="access-grant-btn" disabled style="margin-top:0">Grant Access</button>
         <div id="access-grant-msg" class="msg"></div>
       </div>
       <div id="access-grants-list"><p class="msg">Loading…</p></div>
