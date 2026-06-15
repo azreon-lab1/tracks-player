@@ -262,7 +262,7 @@
     const list = $('track-list');
     list.innerHTML = '';
     if (!data.tracks || data.tracks.length === 0) {
-      list.innerHTML = `<p style="color:#888;padding:14px;text-align:center">${UI.NO_TRACKS_MSG}</p>`;
+      list.innerHTML = `<p style="color:var(--text);padding:14px;text-align:center">${UI.NO_TRACKS_MSG}</p>`;
       const modeCard = $('mode-card-bottom'); if (modeCard) modeCard.style.display = 'none';
       return;
     }
