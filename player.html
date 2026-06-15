@@ -6,10 +6,14 @@
   <title>Azreon Tracks Platform</title>
   <style>
     :root {
-      --bg:           #C8962E;
-      --bg-image:     none;
-      --primary:      #1A4F8A;
-      --primary-dark: #153f6e;
+      --bg:           #0a0604;
+      --bg-image:     radial-gradient(ellipse at 8% 10%, rgba(232,194,123,.90) 0%, transparent 50%),
+                      radial-gradient(ellipse at 85% 85%, rgba(10,6,2,.35) 0%, transparent 45%),
+                      linear-gradient(145deg, #d4a818 0%, #3a2808 40%, #1a0e04 65%, #0a0604 100%);
+      --primary:      #626c78;       /* ── change only this to retheme all action elements ── */
+      --primary-dark: color-mix(in srgb, var(--primary) 75%, #000);
+      --track-hover:  color-mix(in srgb, var(--primary) 12%, #fff);
+      --track-active: color-mix(in srgb, var(--primary) 30%, #fff);
       --accent:       #d4a843;
       --accent-dark:  #b8892a;
       --played:       #111;
@@ -18,8 +22,6 @@
       --muted:        #555;
       --hint:         #999;
       --border:       #eee;
-      --track-hover:  #f0f4ff;
-      --track-active: #c5d4f5;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: sans-serif; background-color: var(--bg); background-image: var(--bg-image); background-size: cover; background-position: center; background-attachment: fixed; min-height: 100vh; }
@@ -30,6 +32,7 @@
     button.primary { width: 100%; padding: 14px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-top: 8px; }
     button.primary:disabled { opacity: .5; cursor: not-allowed; }
     button.secondary { width: 100%; padding: 14px; background: var(--secondary); color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-top: 8px; }
+    #reports-btn { background: #d9a66e; }
     .options-wrap { position: absolute; top: 12px; right: 12px; }
     .options-btn { background: rgba(0,0,0,.07); border: none; color: #888; font-size: 1.6rem; font-weight: 700; line-height: 1; cursor: pointer; padding: 4px 8px; border-radius: 8px; transition: color .15s, background .15s; }
     .options-btn:hover, .options-btn:active, .options-btn.open { color: #555; background: rgba(0,0,0,.13); }
