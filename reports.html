@@ -16,10 +16,13 @@
       --secondary-dark: color-mix(in srgb, var(--secondary) 55%, #000);
       --tertiary:       #a15a24;                                       /* ── select file button  ── */
       --tertiary-dark:  color-mix(in srgb, var(--tertiary)  75%, #000);
+      --tertiary-light: color-mix(in srgb, var(--tertiary)   8%, white); /* ── active toggle bg   ── */
       --loading-colour: #d4a843;                                       /* ── loading bar         ── */
       --highlight:      #a2561b;                                       /* ── ids, headers, hover ── */
       --text:           #222;
       --muted:          #888;
+      --text-muted:     #555;                                          /* ── inactive toggle text ── */
+      --border-muted:   #ddd;                                          /* ── inputs, inactive toggle border ── */
       --err:            #c0392b;
       --border:         #eee;
     }
@@ -75,7 +78,7 @@
       flex-direction: column;
     }
     #report-viewer.open { display: flex; }
-    #upload-summary { display: none; font-size: .85rem; color: #555; margin-top: 8px; padding: 8px; background: #f5f5f5; border-radius: 6px; }
+    #upload-summary { display: none; font-size: .85rem; color: var(--text-muted); margin-top: 8px; padding: 8px; background: #f5f5f5; border-radius: 6px; }
     #upload-msg { font-size: .9rem; text-align: center; margin-top: 8px; }
     .file-pick-btn { display: block; width: 100%; padding: 14px; background: var(--tertiary); color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; text-align: center; margin-top: 8px; }
     .file-pick-btn:hover { background: var(--tertiary-dark); }
@@ -129,17 +132,17 @@
     <div class="card" id="upload-card" style="display:none">
       <h2>Upload Report</h2>
       <p class="msg" style="text-align:left;margin-bottom:6px">Participant Report filename format:</p>
-      <p style="font-family:monospace;font-size:.82rem;color:#555;background:#f5f1eb;border-left:3px solid var(--primary);padding:7px 10px;border-radius:4px;margin-bottom:10px">userId-code-yyyy_mm_dd-number-title.html</p>
+      <p style="font-family:monospace;font-size:.82rem;color:var(--text-muted);background:var(--tertiary-light);border-left:3px solid var(--primary);padding:7px 10px;border-radius:4px;margin-bottom:10px">userId-code-yyyy_mm_dd-number-title.html</p>
       <p class="msg" style="text-align:left;margin-bottom:4px;font-size:.78rem">Example:</p>
-      <p style="font-family:monospace;font-size:.82rem;color:var(--tertiary);background:#f5f1eb;padding:7px 10px;border-radius:4px;margin-bottom:12px">00014-L2-2026_02_09-1-Report.html</p>
+      <p style="font-family:monospace;font-size:.82rem;color:var(--tertiary);background:var(--tertiary-light);padding:7px 10px;border-radius:4px;margin-bottom:12px">00014-L2-2026_02_09-1-Report.html</p>
       <input type="file" id="upload-file" accept=".html,text/html">
       <label for="upload-file" class="file-pick-btn" id="file-pick-label">Select HTML file</label>
       <div id="upload-summary"></div>
       <div id="scope-row" style="display:none;margin-top:10px">
         <p class="msg" style="text-align:left;margin-bottom:6px;font-size:.78rem">Scope (auto-detected — tap to change):</p>
         <div style="display:flex;gap:8px">
-          <button id="scope-participant" onclick="setScope('participant')" style="flex:1;padding:8px;border:2px solid #ddd;border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer">Participant</button>
-          <button id="scope-admin"       onclick="setScope('admin')"       style="flex:1;padding:8px;border:2px solid #ddd;border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer">Admin</button>
+          <button id="scope-participant" onclick="setScope('participant')" style="flex:1;padding:8px;border:2px solid var(--border-muted);border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer">Participant</button>
+          <button id="scope-admin"       onclick="setScope('admin')"       style="flex:1;padding:8px;border:2px solid var(--border-muted);border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer">Admin</button>
         </div>
       </div>
       <div id="notify-row" style="display:none;margin-top:10px">
@@ -154,16 +157,50 @@
 
     <div class="card" id="access-card" style="display:none">
       <h2>Admin Reports Access</h2>
-      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
-        <select id="access-report-select" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:.9rem;color:#333">
+
+      <h3 style="font-size:.9rem;font-weight:600;color:#666;margin:0 0 10px;padding-bottom:6px;border-bottom:1px solid #f0f0f0">Share Report</h3>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px">
+
+        <select id="access-report-select" style="width:100%;padding:10px;border:1px solid var(--border-muted);border-radius:8px;font-size:.9rem;color:#333">
           <option value="">Select report…</option>
         </select>
-        <select id="access-user-select" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:.9rem;color:#333">
-          <option value="">Select user…</option>
-        </select>
-        <button class="secondary" id="access-grant-btn" disabled style="margin-top:0">Grant Access</button>
+
+        <div style="display:flex;gap:8px">
+          <button id="mode-existing-btn" onclick="setShareMode('existing')" style="flex:1;padding:8px;border:2px solid var(--tertiary);border-radius:8px;font-size:.85rem;background:var(--tertiary-light);cursor:pointer;font-weight:600;color:var(--tertiary)">Existing User</button>
+          <button id="mode-new-btn"      onclick="setShareMode('new')"      style="flex:1;padding:8px;border:2px solid var(--border-muted);border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer;color:var(--text-muted)">Guest User</button>
+        </div>
+
+        <p id="share-guest-note" style="display:none;font-size:.78rem;color:#666;background:#fdf5ec;padding:7px 10px;border-radius:6px;border-left:3px solid var(--highlight);margin:0">For NON-PARTICIPANTS ONLY (e.g. collaborators). A new account will be created if the email is not already registered.</p>
+
+        <div id="share-existing-fields">
+          <select id="access-user-select" style="width:100%;padding:10px;border:1px solid var(--border-muted);border-radius:8px;font-size:.9rem;color:#333">
+            <option value="">Select user…</option>
+          </select>
+        </div>
+
+        <div id="share-new-fields" style="display:none;flex-direction:column;gap:8px">
+          <input type="text"  id="share-name"  placeholder="Name"          style="width:100%;padding:10px;border:1px solid var(--border-muted);border-radius:8px;font-size:.9rem;margin:0">
+          <input type="email" id="share-email" placeholder="Email address" style="width:100%;padding:10px;border:1px solid var(--border-muted);border-radius:8px;font-size:.9rem;margin:0">
+        </div>
+
+        <label style="display:flex;align-items:center;gap:8px;font-size:.88rem;color:#444;cursor:pointer">
+          <input type="checkbox" id="share-notify" style="width:auto;margin:0">
+          Send email notification
+        </label>
+
+        <div id="share-type-row" style="display:none;flex-direction:column;gap:6px">
+          <p style="font-size:.78rem;color:var(--muted);margin:0">Email template:</p>
+          <div style="display:flex;gap:8px">
+            <button id="type-participant-btn" onclick="setShareType('participant')" style="flex:1;padding:8px;border:2px solid var(--tertiary);border-radius:8px;font-size:.85rem;background:var(--tertiary-light);cursor:pointer;font-weight:600;color:var(--tertiary)">Participant</button>
+            <button id="type-guest-btn"       onclick="setShareType('guest')"       style="flex:1;padding:8px;border:2px solid var(--border-muted);border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer;color:var(--text-muted)">Guest</button>
+          </div>
+        </div>
+
+        <button class="secondary" id="access-grant-btn" disabled style="margin-top:4px">Grant Access</button>
         <div id="access-grant-msg" class="msg"></div>
       </div>
+
+      <h3 style="font-size:.9rem;font-weight:600;color:#666;margin:0 0 10px;padding-bottom:6px;border-bottom:1px solid #f0f0f0">Active Access</h3>
       <div id="access-grants-list"><p class="msg">Loading…</p></div>
     </div>
 
@@ -174,7 +211,7 @@
 <div id="report-viewer">
   <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #eee;background:#fff;flex-shrink:0">
     <button id="viewer-back-btn" onclick="closeReport()" style="background:none;border:none;font-size:1rem;color:#1A4F8A;cursor:pointer;padding:4px 8px;flex-shrink:0;">&#8592; Back</button>
-    <div id="viewer-back-divider" style="width:1px;height:18px;background:#ddd;flex-shrink:0;"></div>
+    <div id="viewer-back-divider" style="width:1px;height:18px;background:var(--border-muted);flex-shrink:0;"></div>
     <span id="report-viewer-title" style="font-size:.95rem;font-weight:500;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
   </div>
   <div id="report-loading" style="display:none;flex:1;align-items:center;justify-content:center;background:#fff"></div>
@@ -458,11 +495,11 @@
   function setScope(s) {
     uploadScope = s;
     $('scope-participant').style.cssText = s === 'participant'
-      ? 'flex:1;padding:8px;border:2px solid var(--primary);border-radius:8px;font-size:.85rem;background:#f5f1eb;cursor:pointer;font-weight:600;color:var(--primary)'
-      : 'flex:1;padding:8px;border:2px solid #ddd;border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer';
+      ? 'flex:1;padding:8px;border:2px solid var(--primary);border-radius:8px;font-size:.85rem;background:var(--tertiary-light);cursor:pointer;font-weight:600;color:var(--primary)'
+      : 'flex:1;padding:8px;border:2px solid var(--border-muted);border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer';
     $('scope-admin').style.cssText = s === 'admin'
-      ? 'flex:1;padding:8px;border:2px solid var(--primary);border-radius:8px;font-size:.85rem;background:#f5f1eb;cursor:pointer;font-weight:600;color:var(--primary)'
-      : 'flex:1;padding:8px;border:2px solid #ddd;border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer';
+      ? 'flex:1;padding:8px;border:2px solid var(--primary);border-radius:8px;font-size:.85rem;background:var(--tertiary-light);cursor:pointer;font-weight:600;color:var(--primary)'
+      : 'flex:1;padding:8px;border:2px solid var(--border-muted);border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer';
     $('notify-row').style.display = s === 'participant' ? 'block' : 'none';
     if (s !== 'participant') $('notify-check').checked = false;
   }
@@ -512,8 +549,10 @@
   };
 
   // ── Access Management ────────────────────────────────────────────────
-  let allUsers   = [];
-  let allGrants  = [];
+  let allUsers      = [];
+  let allGrants     = [];
+  let shareMode     = 'existing';
+  let shareUserType = 'participant';
 
   async function loadAccessSection() {
     $('access-card').style.display = 'block';
@@ -522,27 +561,29 @@
       fetch(WORKER + '/admin/report-access', { headers: { Authorization: 'Bearer ' + token } }),
     ]);
     if (usersRes.ok) {
-      const d = await usersRes.json();
-      allUsers = d.users || [];
-      const sel = $('access-user-select');
-      allUsers.forEach(u => {
-        const opt = document.createElement('option');
-        opt.value       = u.email;
-        opt.textContent = `${u.email} (${u.user_id})`;
-        sel.appendChild(opt);
-      });
+      allUsers = (await usersRes.json()).users || [];
+      populateUserSelect();
     }
     if (grantsRes.ok) {
-      const d = await grantsRes.json();
-      allGrants = d.grants || [];
+      allGrants = (await grantsRes.json()).grants || [];
     }
     renderGrants();
     syncGrantBtn();
   }
 
+  function populateUserSelect() {
+    const sel = $('access-user-select');
+    while (sel.options.length > 1) sel.remove(1);
+    allUsers.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value       = u.email;
+      opt.textContent = `${u.email} (${u.user_id})`;
+      sel.appendChild(opt);
+    });
+  }
+
   function populateReportSelect() {
     const sel = $('access-report-select');
-    // remove all but the placeholder
     while (sel.options.length > 1) sel.remove(1);
     adminReports.forEach(r => {
       const opt = document.createElement('option');
@@ -550,6 +591,30 @@
       opt.textContent = `[${r.id}] ${r.title}`;
       sel.appendChild(opt);
     });
+  }
+
+  function setShareMode(mode) {
+    shareMode = mode;
+    const isNew         = mode === 'new';
+    const activeStyle   = 'flex:1;padding:8px;border:2px solid var(--tertiary);border-radius:8px;font-size:.85rem;background:var(--tertiary-light);cursor:pointer;font-weight:600;color:var(--tertiary)';
+    const inactiveStyle = 'flex:1;padding:8px;border:2px solid var(--border-muted);border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer;color:var(--text-muted)';
+    $('mode-existing-btn').style.cssText     = isNew ? inactiveStyle : activeStyle;
+    $('mode-new-btn').style.cssText          = isNew ? activeStyle   : inactiveStyle;
+    $('share-existing-fields').style.display = isNew ? 'none'        : 'block';
+    $('share-new-fields').style.display      = isNew ? 'flex'        : 'none';
+    $('share-guest-note').style.display      = isNew ? 'block'       : 'none';
+    $('access-grant-btn').textContent        = isNew ? 'Share'       : 'Grant Access';
+    $('access-grant-msg').textContent        = '';
+    $('access-grant-msg').className          = 'msg';
+    syncGrantBtn();
+  }
+
+  function setShareType(type) {
+    shareUserType = type;
+    const activeStyle   = 'flex:1;padding:8px;border:2px solid var(--tertiary);border-radius:8px;font-size:.85rem;background:var(--tertiary-light);cursor:pointer;font-weight:600;color:var(--tertiary)';
+    const inactiveStyle = 'flex:1;padding:8px;border:2px solid var(--border-muted);border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer;color:var(--text-muted)';
+    $('type-participant-btn').style.cssText = type === 'participant' ? activeStyle : inactiveStyle;
+    $('type-guest-btn').style.cssText       = type === 'guest'       ? activeStyle : inactiveStyle;
   }
 
   function renderGrants() {
@@ -569,7 +634,7 @@
     container.appendChild(hdr);
     allGrants.forEach(g => {
       const row = document.createElement('div');
-      row.className = 'report-item';
+      row.className     = 'report-item';
       row.style.cssText = 'cursor:default';
       row.innerHTML =
         `<span class="col-title" style="flex:1;font-size:.82rem">${g.report_title}</span>` +
@@ -577,48 +642,94 @@
         `<span class="col-date" style="width:70px">${(g.created_at || '').slice(0,10)}</span>` +
         `<span style="width:58px;flex-shrink:0;text-align:right">` +
           `<button onclick="revokeAccess(${g.report_id},'${g.user_id}')" ` +
-            `style="font-size:.75rem;padding:3px 8px;background:none;border:1px solid #ddd;border-radius:6px;color:var(--err);cursor:pointer">` +
+            `style="font-size:.75rem;padding:3px 8px;background:none;border:1px solid var(--border-muted);border-radius:6px;color:var(--err);cursor:pointer">` +
             `Remove</button></span>`;
       container.appendChild(row);
     });
   }
 
   function syncGrantBtn() {
-    $('access-grant-btn').disabled =
-      !$('access-report-select').value || !$('access-user-select').value;
+    const hasReport = !!$('access-report-select').value;
+    const hasTarget = shareMode === 'existing'
+      ? !!$('access-user-select').value
+      : !!$('share-email').value.trim();
+    $('access-grant-btn').disabled = !hasReport || !hasTarget;
   }
 
   $('access-report-select').addEventListener('change', syncGrantBtn);
   $('access-user-select').addEventListener('change', syncGrantBtn);
+  $('share-email').addEventListener('input', syncGrantBtn);
+  $('share-notify').addEventListener('change', function() {
+    $('share-type-row').style.display = this.checked ? 'flex' : 'none';
+  });
 
   $('access-grant-btn').onclick = async function() {
     const reportId = parseInt($('access-report-select').value, 10);
-    const email    = $('access-user-select').value;
-    if (!reportId || !email) return;
+    if (!reportId) return;
+
+    const notify = $('share-notify').checked;
+    let payload;
+    if (shareMode === 'existing') {
+      const email = $('access-user-select').value;
+      if (!email) return;
+      payload = { email, report_id: reportId, type: shareUserType, notify };
+    } else {
+      const name  = $('share-name').value.trim();
+      const email = $('share-email').value.trim().toLowerCase();
+      if (!email) return;
+      payload = { name, email, report_id: reportId, type: shareUserType, notify };
+    }
+
     this.disabled = true;
     $('access-grant-msg').textContent = '';
     $('access-grant-msg').className   = 'msg';
+
     try {
-      const res  = await fetch(WORKER + '/admin/report-access', {
-        method: 'POST',
+      const res  = await fetch(WORKER + '/admin/share-report', {
+        method:  'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-        body: JSON.stringify({ report_id: reportId, email }),
+        body:    JSON.stringify(payload),
       });
       const data = await res.json();
-      if (res.ok) {
-        $('access-grant-msg').textContent = data.message || 'Access granted.';
-        $('access-report-select').value = '';
-        $('access-user-select').value   = '';
+
+      if (res.ok && data.success) {
+        const d           = data.data;
+        const reportTitle = (adminReports.find(r => r.id === reportId) || {}).title || `Report #${reportId}`;
+        let msg = d.created
+          ? `Guest ${d.user_id} created — "${reportTitle}" shared with ${d.name}.`
+          : `"${reportTitle}" shared with ${d.name} (${d.user_id}).`;
+        if (notify) {
+          msg += d.email_sent
+            ? ' Email sent.'
+            : ` Email not sent${d.email_error ? ': ' + d.email_error : '.'}`;
+        }
+        $('access-grant-msg').textContent = msg;
+        $('access-grant-msg').className   = 'msg ok';
+
+        $('access-report-select').value   = '';
+        $('access-user-select').value     = '';
+        $('share-name').value             = '';
+        $('share-email').value            = '';
+        $('share-notify').checked         = false;
+        $('share-type-row').style.display = 'none';
         syncGrantBtn();
+
+        // reload grants list
         const grantsRes = await fetch(WORKER + '/admin/report-access', { headers: { Authorization: 'Bearer ' + token } });
         if (grantsRes.ok) { allGrants = (await grantsRes.json()).grants || []; renderGrants(); }
+
+        // if a new user was created, reload user dropdown so they appear for future grants
+        if (d.created) {
+          const usersRes = await fetch(WORKER + '/admin/users', { headers: { Authorization: 'Bearer ' + token } });
+          if (usersRes.ok) { allUsers = (await usersRes.json()).users || []; populateUserSelect(); }
+        }
       } else {
-        $('access-grant-msg').textContent = data.error || 'Failed.';
+        $('access-grant-msg').textContent = data.message || 'Failed to grant access.';
         $('access-grant-msg').className   = 'msg err';
         this.disabled = false;
       }
     } catch {
-      $('access-grant-msg').textContent = 'Network error.';
+      $('access-grant-msg').textContent = 'Network error. Try again.';
       $('access-grant-msg').className   = 'msg err';
       this.disabled = false;
     }
@@ -627,9 +738,9 @@
   async function revokeAccess(reportId, userId) {
     if (!confirm('Remove this access grant?')) return;
     const res  = await fetch(WORKER + '/admin/report-access', {
-      method: 'DELETE',
+      method:  'DELETE',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-      body: JSON.stringify({ report_id: reportId, user_id: userId }),
+      body:    JSON.stringify({ report_id: reportId, user_id: userId }),
     });
     const data = await res.json();
     if (res.ok) {
