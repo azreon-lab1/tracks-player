@@ -122,8 +122,8 @@
       <div id="scope-row" style="display:none;margin-top:10px">
         <p class="msg" style="text-align:left;margin-bottom:6px;font-size:.78rem">Scope (auto-detected — tap to change):</p>
         <div style="display:flex;gap:8px">
-          <button id="scope-participant" onclick="setScope('participant')" style="flex:1;padding:8px;border:2px solid var(--border-muted);border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer">Participant</button>
-          <button id="scope-admin"       onclick="setScope('admin')"       style="flex:1;padding:8px;border:2px solid var(--border-muted);border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer">Admin</button>
+          <button id="scope-participant">Participant</button>
+          <button id="scope-admin">Admin</button>
         </div>
       </div>
       <div id="notify-row" style="display:none;margin-top:10px">
@@ -134,6 +134,32 @@
       </div>
       <button class="primary" id="upload-btn" disabled style="margin-top:12px">Upload</button>
       <div id="upload-msg" class="msg"></div>
+
+      <div style="margin-top:16px;border-top:1px solid #f0f0f0;padding-top:12px">
+        <button id="resend-toggle-btn" style="width:100%;padding:10px 14px;border:1.5px solid;border-radius:8px;font-size:.88rem;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between">
+          Resend Notification
+          <span class="expand-arrow">▾</span>
+        </button>
+        <div id="resend-section" style="display:none;flex-direction:column;gap:8px;margin-top:12px">
+          <div style="display:flex;gap:8px">
+            <button id="resend-filter-participant-btn">Participant Reports</button>
+            <button id="resend-filter-all-btn">All Reports</button>
+          </div>
+          <select id="resend-report-select" style="width:100%;padding:10px;border:1px solid var(--tertiary);border-radius:8px;font-size:.9rem;color:#333">
+            <option value="">Select report…</option>
+          </select>
+          <select id="resend-recipient-select" style="width:100%;padding:10px;border:1px solid var(--tertiary);border-radius:8px;font-size:.9rem;color:#333">
+            <option value="">Select recipient…</option>
+          </select>
+          <p style="font-size:.78rem;color:var(--muted);margin:0">Address recipient as (Email template):</p>
+          <div style="display:flex;gap:8px">
+            <button id="resend-type-participant-btn">Participant</button>
+            <button id="resend-type-guest-btn">Guest</button>
+          </div>
+          <button class="secondary" id="resend-send-btn" disabled>Send Notification</button>
+          <div id="resend-msg" class="msg"></div>
+        </div>
+      </div>
     </div>
 
     <div class="card" id="access-card" style="display:none">
@@ -143,8 +169,8 @@
       <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px">
 
         <div style="display:flex;gap:8px">
-          <button id="filter-admin-btn" onclick="setReportFilter('admin')" style="flex:1;padding:8px;border:2px solid var(--tertiary);border-radius:8px;font-size:.85rem;background:var(--tertiary-light);cursor:pointer;font-weight:600;color:var(--tertiary)">Admin Reports</button>
-          <button id="filter-all-btn"   onclick="setReportFilter('all')"   style="flex:1;padding:8px;border:2px solid var(--border-muted);border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer;color:var(--text-muted)">All Reports</button>
+          <button id="filter-admin-btn">Admin Reports</button>
+          <button id="filter-all-btn">All Reports</button>
         </div>
 
         <select id="access-report-select" style="width:100%;padding:10px;border:1px solid var(--tertiary);border-radius:8px;font-size:.9rem;color:#333;margin-bottom:6px">
@@ -152,8 +178,8 @@
         </select>
 
         <div style="display:flex;gap:8px">
-          <button id="mode-new-btn"      onclick="setShareMode('new')"      style="flex:1;padding:8px;border:2px solid var(--tertiary);border-radius:8px;font-size:.85rem;background:var(--tertiary-light);cursor:pointer;font-weight:600;color:var(--tertiary)">Guest User</button>
-          <button id="mode-existing-btn" onclick="setShareMode('existing')" style="flex:1;padding:8px;border:2px solid var(--border-muted);border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer;color:var(--text-muted)">Existing User</button>
+          <button id="mode-new-btn">Guest User</button>
+          <button id="mode-existing-btn">Existing User</button>
         </div>
 
         <p id="share-guest-note" style="font-size:.78rem;color:#666;background:#fdf5ec;padding:7px 10px;border-radius:6px;border-left:3px solid var(--highlight);margin:0">For NON-PARTICIPANTS ONLY (e.g. collaborators). A new account will be created if the email is not already registered.</p>
@@ -177,8 +203,8 @@
         <div id="share-type-row" style="display:none;flex-direction:column;gap:6px">
           <p style="font-size:.78rem;color:var(--muted);margin:0">Address recipient as (Email template):</p>
           <div style="display:flex;gap:8px">
-            <button id="type-guest-btn"       onclick="setShareType('guest')"       style="flex:1;padding:8px;border:2px solid var(--tertiary);border-radius:8px;font-size:.85rem;background:var(--tertiary-light);cursor:pointer;font-weight:600;color:var(--tertiary)">Guest</button>
-            <button id="type-participant-btn" onclick="setShareType('participant')" style="flex:1;padding:8px;border:2px solid var(--border-muted);border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer;color:var(--text-muted)">Participant</button>
+            <button id="type-guest-btn">Guest</button>
+            <button id="type-participant-btn">Participant</button>
           </div>
         </div>
 
@@ -372,6 +398,7 @@
     adminReports.forEach(r => { if (!knownIds.has(r.id)) allReports.push(r); });
     renderSorted();
     populateReportSelect();
+    populateResendReportSelect();
   }
 
   async function fetchReportHtml(url) {
@@ -474,18 +501,6 @@
     $('scope-row').style.display = 'block';
   });
 
-  function setScope(s) {
-    uploadScope = s;
-    $('scope-participant').style.cssText = s === 'participant'
-      ? 'flex:1;padding:8px;border:2px solid var(--primary);border-radius:8px;font-size:.85rem;background:var(--tertiary-light);cursor:pointer;font-weight:600;color:var(--primary)'
-      : 'flex:1;padding:8px;border:2px solid var(--border-muted);border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer';
-    $('scope-admin').style.cssText = s === 'admin'
-      ? 'flex:1;padding:8px;border:2px solid var(--primary);border-radius:8px;font-size:.85rem;background:var(--tertiary-light);cursor:pointer;font-weight:600;color:var(--primary)'
-      : 'flex:1;padding:8px;border:2px solid var(--border-muted);border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer';
-    $('notify-row').style.display = s === 'participant' ? 'block' : 'none';
-    if (s !== 'participant') $('notify-check').checked = false;
-  }
-
   $('upload-btn').onclick = async function() {
     if (!uploadFile) return;
     this.disabled = true;
@@ -536,6 +551,66 @@
   let shareMode     = 'new';
   let shareUserType = 'guest';
   let reportFilter  = 'admin';
+  let resendFilter  = 'participant';
+  let resendType    = 'participant';
+
+  const setScope = toggleSelector(
+    ['scope-participant', 'scope-admin'], ['participant', 'admin'],
+    s => {
+      uploadScope = s;
+      $('notify-row').style.display = s === 'participant' ? 'block' : 'none';
+      if (s !== 'participant') $('notify-check').checked = false;
+    },
+    'var(--primary)'
+  );
+  const setReportFilter = toggleSelector(
+    ['filter-admin-btn', 'filter-all-btn'], ['admin', 'all'],
+    f => {
+      reportFilter = f;
+      $('access-report-select').value = '';
+      syncGrantBtn();
+      populateReportSelect();
+    }
+  );
+  const setShareMode = toggleSelector(
+    ['mode-new-btn', 'mode-existing-btn'], ['new', 'existing'],
+    mode => {
+      shareMode = mode;
+      const isNew = mode === 'new';
+      $('share-existing-fields').style.display = isNew ? 'none'  : 'block';
+      $('share-new-fields').style.display      = isNew ? 'flex'  : 'none';
+      $('share-guest-note').style.display      = isNew ? 'block' : 'none';
+      $('access-grant-btn').textContent        = isNew ? 'Share' : 'Grant Access';
+      $('access-grant-msg').textContent        = '';
+      $('access-grant-msg').className          = 'msg';
+      syncGrantBtn();
+    }
+  );
+  const setShareType = toggleSelector(
+    ['type-guest-btn', 'type-participant-btn'], ['guest', 'participant'],
+    t => { shareUserType = t; }
+  );
+  const setResendFilter = toggleSelector(
+    ['resend-filter-participant-btn', 'resend-filter-all-btn'], ['participant', 'all'],
+    f => {
+      resendFilter = f;
+      $('resend-report-select').value = '';
+      $('resend-recipient-select').innerHTML = '<option value="">Select recipient…</option>';
+      syncResendBtn();
+      populateResendReportSelect();
+    }
+  );
+  const setResendType = toggleSelector(
+    ['resend-type-participant-btn', 'resend-type-guest-btn'], ['participant', 'guest'],
+    t => { resendType = t; }
+  );
+
+  setScope('admin');
+  setReportFilter('admin');
+  setShareMode('new');
+  setShareType('guest');
+  setResendFilter('participant');
+  setResendType('participant');
 
   async function loadAccessSection() {
     $('access-card').style.display = 'block';
@@ -578,39 +653,58 @@
     });
   }
 
-  function setReportFilter(filter) {
-    reportFilter = filter;
-    const activeStyle   = 'flex:1;padding:8px;border:2px solid var(--tertiary);border-radius:8px;font-size:.85rem;background:var(--tertiary-light);cursor:pointer;font-weight:600;color:var(--tertiary)';
-    const inactiveStyle = 'flex:1;padding:8px;border:2px solid var(--border-muted);border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer;color:var(--text-muted)';
-    $('filter-all-btn').style.cssText   = filter === 'all'   ? activeStyle : inactiveStyle;
-    $('filter-admin-btn').style.cssText = filter === 'admin' ? activeStyle : inactiveStyle;
-    $('access-report-select').value = '';
-    syncGrantBtn();
-    populateReportSelect();
+  expandableButton('resend-toggle-btn', 'resend-section', '#280769');
+
+  function populateResendReportSelect() {
+    const sel = $('resend-report-select');
+    while (sel.options.length > 1) sel.remove(1);
+    const isAdminReport = r => r.scope === 'admin' || (!r.user_id && !r.protocol_id && !r.report_number);
+    const reports = resendFilter === 'participant'
+      ? adminReports.filter(r => !isAdminReport(r))
+      : adminReports;
+    reports.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value       = r.id;
+      opt.textContent = `[${r.id}] ${r.title}`;
+      sel.appendChild(opt);
+    });
   }
 
-  function setShareMode(mode) {
-    shareMode = mode;
-    const isNew         = mode === 'new';
-    const activeStyle   = 'flex:1;padding:8px;border:2px solid var(--tertiary);border-radius:8px;font-size:.85rem;background:var(--tertiary-light);cursor:pointer;font-weight:600;color:var(--tertiary)';
-    const inactiveStyle = 'flex:1;padding:8px;border:2px solid var(--border-muted);border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer;color:var(--text-muted)';
-    $('mode-existing-btn').style.cssText     = isNew ? inactiveStyle : activeStyle;
-    $('mode-new-btn').style.cssText          = isNew ? activeStyle   : inactiveStyle;
-    $('share-existing-fields').style.display = isNew ? 'none'        : 'block';
-    $('share-new-fields').style.display      = isNew ? 'flex'        : 'none';
-    $('share-guest-note').style.display      = isNew ? 'block'       : 'none';
-    $('access-grant-btn').textContent        = isNew ? 'Share'       : 'Grant Access';
-    $('access-grant-msg').textContent        = '';
-    $('access-grant-msg').className          = 'msg';
-    syncGrantBtn();
+  function populateResendRecipientSelect(reportId) {
+    const sel = $('resend-recipient-select');
+    while (sel.options.length > 1) sel.remove(1);
+    if (!reportId) { syncResendBtn(); return; }
+    const reportIdNum = parseInt(reportId, 10);
+    const report      = adminReports.find(r => r.id === reportIdNum);
+    const seen        = new Set();
+    const recipients  = [];
+    if (report && report.user_id) {
+      const owner = allUsers.find(u => u.user_id == report.user_id);
+      if (owner) {
+        seen.add(owner.email);
+        recipients.push({ email: owner.email, label: `${owner.email} (owner)` });
+      }
+    }
+    allGrants.filter(g => g.report_id === reportIdNum).forEach(g => {
+      if (!seen.has(g.email)) {
+        seen.add(g.email);
+        recipients.push({ email: g.email, label: g.email });
+      }
+    });
+    recipients.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value       = r.email;
+      opt.textContent = r.label;
+      sel.appendChild(opt);
+    });
+    if (recipients.length === 1) sel.value = recipients[0].email;
+    syncResendBtn();
   }
 
-  function setShareType(type) {
-    shareUserType = type;
-    const activeStyle   = 'flex:1;padding:8px;border:2px solid var(--tertiary);border-radius:8px;font-size:.85rem;background:var(--tertiary-light);cursor:pointer;font-weight:600;color:var(--tertiary)';
-    const inactiveStyle = 'flex:1;padding:8px;border:2px solid var(--border-muted);border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer;color:var(--text-muted)';
-    $('type-participant-btn').style.cssText = type === 'participant' ? activeStyle : inactiveStyle;
-    $('type-guest-btn').style.cssText       = type === 'guest'       ? activeStyle : inactiveStyle;
+  function syncResendBtn() {
+    const hasReport    = !!$('resend-report-select').value;
+    const hasRecipient = !!$('resend-recipient-select').value;
+    $('resend-send-btn').disabled = !hasReport || !hasRecipient;
   }
 
   function renderGrants() {
@@ -658,6 +752,43 @@
   $('share-notify').addEventListener('change', function() {
     $('share-type-row').style.display = this.checked ? 'flex' : 'none';
   });
+
+  $('resend-report-select').addEventListener('change', function() {
+    populateResendRecipientSelect(this.value);
+  });
+  $('resend-recipient-select').addEventListener('change', syncResendBtn);
+
+  $('resend-send-btn').onclick = async function() {
+    const reportId = parseInt($('resend-report-select').value, 10);
+    const email    = $('resend-recipient-select').value;
+    if (!reportId || !email) return;
+    this.disabled = true;
+    $('resend-msg').textContent = '';
+    $('resend-msg').className   = 'msg';
+    try {
+      const res  = await fetch(WORKER + '/admin/notify-report', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body:    JSON.stringify({ report_id: reportId, email, type: resendType }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        $('resend-msg').textContent = data.message || 'Notification sent.';
+        $('resend-msg').className   = 'msg ok';
+        $('resend-report-select').value        = '';
+        $('resend-recipient-select').innerHTML = '<option value="">Select recipient…</option>';
+        syncResendBtn();
+      } else {
+        $('resend-msg').textContent = data.error || 'Failed to send notification.';
+        $('resend-msg').className   = 'msg err';
+        this.disabled = false;
+      }
+    } catch {
+      $('resend-msg').textContent = 'Network error. Try again.';
+      $('resend-msg').className   = 'msg err';
+      this.disabled = false;
+    }
+  };
 
   $('access-grant-btn').onclick = async function() {
     const reportId = parseInt($('access-report-select').value, 10);
