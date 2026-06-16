@@ -766,7 +766,7 @@
     $('resend-msg').textContent = '';
     $('resend-msg').className   = 'msg';
     try {
-      const res  = await fetch(WORKER + '/admin/notify-report', {
+      const res  = await fetch(WORKER + '/admin/report-notification', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
         body:    JSON.stringify({ report_id: reportId, email, type: resendType }),
