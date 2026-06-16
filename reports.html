@@ -27,7 +27,8 @@
       --err:            #c0392b;
       --border:         #eee;
     }
-    h2 { font-size: 1.1rem; color: #333; margin-bottom: 14px; }
+    h2 { font-size: 1.1rem; color: #333; margin-bottom: 18px; }
+    h3 { font-size: .9rem; font-weight: 600; color: #666; margin: 6px 0 14px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; }
     .err { color: var(--err); font-weight: 600; display: inline-block; background: #fdecea; border-radius: 20px; padding: 5px 14px; }
     .ok  { color: #27ae60; font-weight: 600; display: table; margin: 8px auto 0; background: #eafaf1; border-radius: 20px; padding: 5px 14px; }
     .report-list-header { display: flex; align-items: center; gap: 8px; padding: 0 0 7px; border-bottom: 2px solid #f0f0f0; margin-bottom: 4px; }
@@ -138,49 +139,54 @@
     <div class="card" id="access-card" style="display:none">
       <h2>Admin Reports Access</h2>
 
-      <h3 style="font-size:.9rem;font-weight:600;color:#666;margin:0 0 10px;padding-bottom:6px;border-bottom:1px solid #f0f0f0">Share Report</h3>
-      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px">
+      <h3>Share Report</h3>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px">
 
-        <select id="access-report-select" style="width:100%;padding:10px;border:1px solid var(--border-muted);border-radius:8px;font-size:.9rem;color:#333">
+        <div style="display:flex;gap:8px">
+          <button id="filter-admin-btn" onclick="setReportFilter('admin')" style="flex:1;padding:8px;border:2px solid var(--tertiary);border-radius:8px;font-size:.85rem;background:var(--tertiary-light);cursor:pointer;font-weight:600;color:var(--tertiary)">Admin Reports</button>
+          <button id="filter-all-btn"   onclick="setReportFilter('all')"   style="flex:1;padding:8px;border:2px solid var(--border-muted);border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer;color:var(--text-muted)">All Reports</button>
+        </div>
+
+        <select id="access-report-select" style="width:100%;padding:10px;border:1px solid var(--tertiary);border-radius:8px;font-size:.9rem;color:#333;margin-bottom:6px">
           <option value="">Select report…</option>
         </select>
 
         <div style="display:flex;gap:8px">
-          <button id="mode-existing-btn" onclick="setShareMode('existing')" style="flex:1;padding:8px;border:2px solid var(--tertiary);border-radius:8px;font-size:.85rem;background:var(--tertiary-light);cursor:pointer;font-weight:600;color:var(--tertiary)">Existing User</button>
-          <button id="mode-new-btn"      onclick="setShareMode('new')"      style="flex:1;padding:8px;border:2px solid var(--border-muted);border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer;color:var(--text-muted)">Guest User</button>
+          <button id="mode-new-btn"      onclick="setShareMode('new')"      style="flex:1;padding:8px;border:2px solid var(--tertiary);border-radius:8px;font-size:.85rem;background:var(--tertiary-light);cursor:pointer;font-weight:600;color:var(--tertiary)">Guest User</button>
+          <button id="mode-existing-btn" onclick="setShareMode('existing')" style="flex:1;padding:8px;border:2px solid var(--border-muted);border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer;color:var(--text-muted)">Existing User</button>
         </div>
 
-        <p id="share-guest-note" style="display:none;font-size:.78rem;color:#666;background:#fdf5ec;padding:7px 10px;border-radius:6px;border-left:3px solid var(--highlight);margin:0">For NON-PARTICIPANTS ONLY (e.g. collaborators). A new account will be created if the email is not already registered.</p>
+        <p id="share-guest-note" style="font-size:.78rem;color:#666;background:#fdf5ec;padding:7px 10px;border-radius:6px;border-left:3px solid var(--highlight);margin:0">For NON-PARTICIPANTS ONLY (e.g. collaborators). A new account will be created if the email is not already registered.</p>
 
-        <div id="share-existing-fields">
-          <select id="access-user-select" style="width:100%;padding:10px;border:1px solid var(--border-muted);border-radius:8px;font-size:.9rem;color:#333">
+        <div id="share-existing-fields" style="display:none">
+          <select id="access-user-select" style="width:100%;padding:10px;border:1px solid var(--tertiary);border-radius:8px;font-size:.9rem;color:#333;margin-bottom:6px">
             <option value="">Select user…</option>
           </select>
         </div>
 
-        <div id="share-new-fields" style="display:none;flex-direction:column;gap:8px">
+        <div id="share-new-fields" style="display:flex;flex-direction:column;gap:8px">
           <input type="text"  id="share-name"  placeholder="Name"          style="width:100%;padding:10px;border:1px solid var(--border-muted);border-radius:8px;font-size:.9rem;margin:0">
           <input type="email" id="share-email" placeholder="Email address" style="width:100%;padding:10px;border:1px solid var(--border-muted);border-radius:8px;font-size:.9rem;margin:0">
         </div>
 
-        <label style="display:flex;align-items:center;gap:8px;font-size:.88rem;color:#444;cursor:pointer">
+        <label style="display:flex;align-items:center;gap:8px;font-size:.88rem;color:#444;cursor:pointer;margin-top:4px">
           <input type="checkbox" id="share-notify" style="width:auto;margin:0">
           Send email notification
         </label>
 
         <div id="share-type-row" style="display:none;flex-direction:column;gap:6px">
-          <p style="font-size:.78rem;color:var(--muted);margin:0">Email template:</p>
+          <p style="font-size:.78rem;color:var(--muted);margin:0">Address recipient as (Email template):</p>
           <div style="display:flex;gap:8px">
-            <button id="type-participant-btn" onclick="setShareType('participant')" style="flex:1;padding:8px;border:2px solid var(--tertiary);border-radius:8px;font-size:.85rem;background:var(--tertiary-light);cursor:pointer;font-weight:600;color:var(--tertiary)">Participant</button>
-            <button id="type-guest-btn"       onclick="setShareType('guest')"       style="flex:1;padding:8px;border:2px solid var(--border-muted);border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer;color:var(--text-muted)">Guest</button>
+            <button id="type-guest-btn"       onclick="setShareType('guest')"       style="flex:1;padding:8px;border:2px solid var(--tertiary);border-radius:8px;font-size:.85rem;background:var(--tertiary-light);cursor:pointer;font-weight:600;color:var(--tertiary)">Guest</button>
+            <button id="type-participant-btn" onclick="setShareType('participant')" style="flex:1;padding:8px;border:2px solid var(--border-muted);border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer;color:var(--text-muted)">Participant</button>
           </div>
         </div>
 
-        <button class="secondary" id="access-grant-btn" disabled style="margin-top:4px">Grant Access</button>
+        <button class="secondary" id="access-grant-btn" disabled style="margin-top:4px">Share</button>
         <div id="access-grant-msg" class="msg"></div>
       </div>
 
-      <h3 style="font-size:.9rem;font-weight:600;color:#666;margin:0 0 10px;padding-bottom:6px;border-bottom:1px solid #f0f0f0">Active Access</h3>
+      <h3>Active Access</h3>
       <div id="access-grants-list"><p class="msg">Loading…</p></div>
     </div>
 
@@ -527,8 +533,9 @@
   // ── Access Management ────────────────────────────────────────────────
   let allUsers      = [];
   let allGrants     = [];
-  let shareMode     = 'existing';
-  let shareUserType = 'participant';
+  let shareMode     = 'new';
+  let shareUserType = 'guest';
+  let reportFilter  = 'admin';
 
   async function loadAccessSection() {
     $('access-card').style.display = 'block';
@@ -561,12 +568,25 @@
   function populateReportSelect() {
     const sel = $('access-report-select');
     while (sel.options.length > 1) sel.remove(1);
-    adminReports.forEach(r => {
+    const isAdminReport = r => r.scope === 'admin' || (!r.user_id && !r.protocol_id && !r.report_number);
+    const reports = reportFilter === 'admin' ? adminReports.filter(isAdminReport) : adminReports;
+    reports.forEach(r => {
       const opt = document.createElement('option');
       opt.value       = r.id;
       opt.textContent = `[${r.id}] ${r.title}`;
       sel.appendChild(opt);
     });
+  }
+
+  function setReportFilter(filter) {
+    reportFilter = filter;
+    const activeStyle   = 'flex:1;padding:8px;border:2px solid var(--tertiary);border-radius:8px;font-size:.85rem;background:var(--tertiary-light);cursor:pointer;font-weight:600;color:var(--tertiary)';
+    const inactiveStyle = 'flex:1;padding:8px;border:2px solid var(--border-muted);border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer;color:var(--text-muted)';
+    $('filter-all-btn').style.cssText   = filter === 'all'   ? activeStyle : inactiveStyle;
+    $('filter-admin-btn').style.cssText = filter === 'admin' ? activeStyle : inactiveStyle;
+    $('access-report-select').value = '';
+    syncGrantBtn();
+    populateReportSelect();
   }
 
   function setShareMode(mode) {
