@@ -28,6 +28,7 @@
       --border:           #eee;
       --card-arrow-open:   color-mix(in srgb, var(--secondary) 55%, black);
       --card-arrow-closed: color-mix(in srgb, var(--tertiary)  80%, black);
+      --add-green: #03450a;
     }
     h2 { font-size: 1.1rem; color: #333; margin-bottom: 18px; }
     h3 { font-size: .9rem; font-weight: 600; color: #666; margin: 6px 0 14px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; }
@@ -62,8 +63,10 @@
     }
     #report-viewer.open { display: flex; }
     #upload-summary { display: none; font-size: .85rem; color: var(--text-muted); margin-top: 8px; padding: 8px; background: #f5f5f5; border-radius: 6px; }
-    #add-p-submit-btn { background: #03450a; }
-    #add-p-submit-btn:hover { background: color-mix(in srgb, #03450a 75%, #000); }
+    #add-p-submit-btn, #add-user-submit-btn { background: var(--add-green); }
+    #add-p-submit-btn:hover, #add-user-submit-btn:hover { background: color-mix(in srgb, var(--add-green) 75%, #000); }
+    #users-list .col-id { width: 60px; border-right: 1px solid #f0f0f0; padding-right: 10px; }
+    #add-user-expiry { color: #aaa; }
     #upload-msg-area { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
     #upload-msg { font-size: .9rem; }
     .file-pick-btn { display: block; width: 100%; padding: 14px; background: var(--tertiary); color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; text-align: center; margin-top: 8px; }
@@ -113,6 +116,28 @@
     <div class="card" id="admin-reports-card" style="display:none">
       <h2>All Reports (Admin)</h2>
       <div id="admin-reports-list"><p class="msg">Loading…</p></div>
+    </div>
+
+    <div class="card" id="users-card" style="display:none">
+      <h2>User Management</h2>
+      <h3>Users</h3>
+      <div id="users-list"><p class="msg">Loading…</p></div>
+      <div style="margin-top:16px;border-top:1px solid #f0f0f0;padding-top:12px">
+        <button id="add-user-btn" style="width:100%;padding:10px 14px;border:1.5px solid;border-radius:8px;font-size:.88rem;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between">
+          Add User
+          <span class="expand-arrow">▾</span>
+        </button>
+        <div id="add-user-section" style="display:none;flex-direction:column;gap:8px;margin-top:12px">
+          <input id="add-user-userid" type="text"  placeholder="User ID"          style="margin:0">
+          <input id="add-user-name"   type="text"  placeholder="Name"             style="margin:0">
+          <input id="add-user-email"  type="email" placeholder="Email address"    style="margin:0">
+          <input id="add-user-notes"  type="text"  placeholder="Notes (optional)" style="margin:0">
+          <p style="font-size:.78rem;color:var(--text-muted);margin:0">Expiry date (optional)</p>
+          <input id="add-user-expiry" type="date" style="margin:0">
+          <button class="primary" id="add-user-submit-btn">Add User</button>
+          <div id="add-user-msg" class="msg"></div>
+        </div>
+      </div>
     </div>
 
     <div class="card" id="upload-card" style="display:none">
@@ -270,6 +295,7 @@
   const HEADER_IMAGE_HEIGHT = '';  // '' = use HEADER_IMAGE_HEIGHT_DEFAULT in ui.js (currently 70px)
   const HEADER_IMAGE_FILTER = '';  // '' = use HEADER_IMAGE_FILTER_DEFAULT in ui.js (currently white)
   const REPORT_SAME_ORIGIN  = true;
+  const ADD_GREEN           = '#03450a';
 
   if (!token) {
     const _rp = new URLSearchParams(location.search).get('report');
@@ -290,7 +316,8 @@
 
   expandableCard('reports-card');
   expandableCard('admin-reports-card');
-  expandableCard('upload-card');
+  expandableCard('users-card',  null, null, false);
+  expandableCard('upload-card', null, null, false);
   expandableCard('access-card', null, null, false);
 
   init();
@@ -325,8 +352,10 @@
     if (isAdmin) {
       $('admin-reports-card').style.display = 'block';
       $('upload-card').style.display        = 'block';
+      $('users-card').style.display         = 'block';
       loadAdminReports();
       loadAccessSection();
+      loadUsers();
     }
 
     if (reportParam) openReportByParam(reportParam);
@@ -549,7 +578,7 @@
   let pendingParticipantId = '';
   let pendingProtocolId    = '';
 
-  expandableButton('add-participant-btn', 'add-participant-section', '#03450a');
+  expandableButton('add-participant-btn', 'add-participant-section', ADD_GREEN);
 
   async function doUpload() {
     if (!uploadFile) return;
@@ -713,6 +742,116 @@
   setShareType('guest');
   setResendFilter('participant');
   setResendType('participant');
+
+  // ── User Management ─────────────────────────────────────────────────
+  let allUsersList = [];
+  let userSortKey  = 'user_id';
+  let userSortDir  = 1;
+
+  expandableButton('add-user-btn', 'add-user-section', ADD_GREEN);
+  $('add-user-expiry').addEventListener('change', function() {
+    this.style.color = this.value ? '' : '#aaa';
+  });
+
+  async function loadUsers() {
+    try {
+      const res  = await fetch(WORKER + '/admin/users', {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      const data = await res.json();
+      allUsersList = data.users || [];
+      renderUsers(allUsersList);
+    } catch {
+      $('users-list').innerHTML = '<p class="msg err">Failed to load users.</p>';
+    }
+  }
+
+  function renderUsers(users) {
+    const list = $('users-list');
+    if (!users.length) {
+      list.innerHTML = '<p class="msg">No users found.</p>';
+      return;
+    }
+    const sorted = [...users].sort((a, b) => {
+      const av = (a[userSortKey] ?? '').toString().toLowerCase();
+      const bv = (b[userSortKey] ?? '').toString().toLowerCase();
+      return av < bv ? -userSortDir : av > bv ? userSortDir : 0;
+    });
+    function uArrow(key) {
+      if (userSortKey !== key) return '';
+      return userSortDir === 1
+        ? '<span class="sort-arr asc"></span>'
+        : '<span class="sort-arr desc"></span>';
+    }
+    function uHdr(label, key, extraStyle = '') {
+      const active = userSortKey === key ? ' sort-active' : '';
+      return `<span class="${active}" style="${extraStyle}" onclick="setUserSort('${key}')">${label}${uArrow(key)}</span>`;
+    }
+    const header = `<div class="report-list-header">
+      ${uHdr('User ID',       'user_id', 'width:60px;flex-shrink:0')}
+      ${uHdr('Name',          'name',    'flex:1;min-width:0')}
+      ${uHdr('Email Address', 'email',   'flex-shrink:1;min-width:0;text-align:right')}
+    </div>`;
+    list.innerHTML = header + sorted.map(u => {
+      const hintParts = [];
+      if (u.notes)       hintParts.push(`Notes: ${u.notes}`);
+      if (u.expiry_date) hintParts.push(`Expires: ${u.expiry_date}`);
+      else               hintParts.push('No expiry');
+      return `<div class="report-item" title="${hintParts.join(' · ')}" style="cursor:default">
+        <span class="col-id">${u.user_id}</span>
+        <span class="col-title">${u.name || '—'}</span>
+        <span style="font-size:.78rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:1;min-width:0;text-align:right">${u.email}</span>
+      </div>`;
+    }).join('');
+  }
+
+  function setUserSort(key) {
+    if (userSortKey === key) userSortDir *= -1;
+    else { userSortKey = key; userSortDir = 1; }
+    renderUsers(allUsersList);
+  }
+
+  $('add-user-submit-btn').onclick = async function() {
+    const userId = $('add-user-userid').value.trim();
+    const name   = $('add-user-name').value.trim();
+    const email  = $('add-user-email').value.trim();
+    const notes  = $('add-user-notes').value.trim();
+    const expiry = $('add-user-expiry').value || null;
+    if (!userId || !name || !email) {
+      $('add-user-msg').textContent = 'User ID, name and email are required.';
+      $('add-user-msg').className   = 'msg err';
+      return;
+    }
+    this.disabled = true;
+    $('add-user-msg').textContent = 'Adding user…';
+    $('add-user-msg').className   = 'msg';
+    try {
+      const res  = await fetch(WORKER + '/admin/add-participant', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body:    JSON.stringify({ user_id: userId, name, email, notes, log_enabled: 1, expiry_date: expiry }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        $('add-user-msg').textContent = data.message || 'User added.';
+        $('add-user-msg').className   = 'msg ok';
+        $('add-user-userid').value = '';
+        $('add-user-name').value   = '';
+        $('add-user-email').value  = '';
+        $('add-user-notes').value  = '';
+        $('add-user-expiry').value = '';
+        $('add-user-expiry').style.color = '#aaa';
+        loadUsers();
+      } else {
+        $('add-user-msg').textContent = data.error || 'Failed to add user.';
+        $('add-user-msg').className   = 'msg err';
+      }
+    } catch {
+      $('add-user-msg').textContent = 'Network error. Try again.';
+      $('add-user-msg').className   = 'msg err';
+    }
+    this.disabled = false;
+  };
 
   async function loadAccessSection() {
     $('access-card').style.display = 'block';
