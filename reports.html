@@ -24,8 +24,10 @@
       --muted:          #888;
       --text-muted:     #555;                                          /* ── inactive toggle text ── */
       --border-muted:   #ddd;                                          /* ── inputs, inactive toggle border ── */
-      --err:            #c0392b;
-      --border:         #eee;
+      --err:              #c0392b;
+      --border:           #eee;
+      --card-arrow-open:   color-mix(in srgb, var(--secondary) 55%, black);
+      --card-arrow-closed: color-mix(in srgb, var(--tertiary)  80%, black);
     }
     h2 { font-size: 1.1rem; color: #333; margin-bottom: 18px; }
     h3 { font-size: .9rem; font-weight: 600; color: #666; margin: 6px 0 14px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; }
@@ -285,6 +287,11 @@
 
   const params      = new URLSearchParams(location.search);
   const reportParam = params.get('report');
+
+  expandableCard('reports-card');
+  expandableCard('admin-reports-card');
+  expandableCard('upload-card');
+  expandableCard('access-card', null, null, false);
 
   init();
 

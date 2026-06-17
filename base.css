@@ -1,5 +1,10 @@
 /* Azreon Tracks Platform — shared base styles, loaded by all pages */
 
+:root {
+  --card-arrow-open:   #888;
+  --card-arrow-closed: #bbb;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: sans-serif; background-color: var(--bg); background-image: var(--bg-image); background-size: cover; background-position: center; background-attachment: fixed; min-height: 100vh; }
 .container { max-width: 820px; margin: 0 auto; padding: 24px 16px; }

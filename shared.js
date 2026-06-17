@@ -35,6 +35,43 @@ function initOptionsMenu() {
   if (logoutBtn) logoutBtn.onclick = logout;
 }
 
+function expandableCard(cardId, openColour, closedColour, startOpen) {
+  const card = document.getElementById(cardId);
+  if (!card) return;
+
+  const isOpen  = startOpen !== false;
+  const openC   = openColour   || 'var(--card-arrow-open,   #888)';
+  const closedC = closedColour || 'var(--card-arrow-closed, #bbb)';
+
+  const h2 = card.querySelector(':scope > h2');
+  if (!h2) return;
+
+  const header = document.createElement('div');
+  header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none';
+
+  const arrow = document.createElement('span');
+  arrow.style.cssText = 'font-size:2rem;flex-shrink:0;line-height:1;display:flex;align-items:center';
+
+  h2.style.marginBottom = '0';
+  card.insertBefore(header, h2);
+  header.appendChild(h2);
+  header.appendChild(arrow);
+
+  const body = document.createElement('div');
+  while (header.nextSibling) body.appendChild(header.nextSibling);
+  card.appendChild(body);
+
+  function setState(open) {
+    body.style.display        = open ? 'block' : 'none';
+    header.style.marginBottom = open ? '18px'  : '0';
+    arrow.textContent         = open ? '▴'     : '▾';
+    arrow.style.color         = open ? openC   : closedC;
+  }
+
+  header.onclick = () => setState(body.style.display !== 'block');
+  setState(isOpen);
+}
+
 function expandableButton(btnId, sectionId, colour) {
   const btn     = $(btnId);
   const section = $(sectionId);
