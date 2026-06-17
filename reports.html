@@ -66,7 +66,6 @@
     #add-p-submit-btn, #add-user-submit-btn { background: var(--add-green); }
     #add-p-submit-btn:hover, #add-user-submit-btn:hover { background: color-mix(in srgb, var(--add-green) 75%, #000); }
     #users-list .col-id { width: 60px; border-right: 1px solid #f0f0f0; padding-right: 10px; }
-    #add-user-expiry { color: #aaa; }
     #upload-msg-area { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
     #upload-msg { font-size: .9rem; }
     .file-pick-btn { display: block; width: 100%; padding: 14px; background: var(--tertiary); color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; text-align: center; margin-top: 8px; }
@@ -749,9 +748,6 @@
   let userSortDir  = 1;
 
   expandableButton('add-user-btn', 'add-user-section', ADD_GREEN);
-  $('add-user-expiry').addEventListener('change', function() {
-    this.style.color = this.value ? '' : '#aaa';
-  });
 
   async function loadUsers() {
     try {
@@ -840,7 +836,6 @@
         $('add-user-email').value  = '';
         $('add-user-notes').value  = '';
         $('add-user-expiry').value = '';
-        $('add-user-expiry').style.color = '#aaa';
         loadUsers();
       } else {
         $('add-user-msg').textContent = data.error || 'Failed to add user.';
