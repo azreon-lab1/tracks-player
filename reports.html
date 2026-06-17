@@ -41,15 +41,19 @@
     .sort-arr { display: inline-block; width: 0; height: 0; margin-left: 4px; vertical-align: middle; }
     .sort-arr.asc  { border-left: 4px solid transparent; border-right: 4px solid transparent; border-bottom: 6px solid currentColor; }
     .sort-arr.desc { border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 6px solid currentColor; }
+    .report-th { font-size: .67rem; font-weight: 700; color: #bbb; text-transform: uppercase; letter-spacing: .04em; overflow: hidden; white-space: nowrap; padding: 0 0 7px; border-bottom: 2px solid #f0f0f0; user-select: none; }
+    .report-th[data-sortable] { cursor: pointer; }
+    .report-th[data-sortable]:hover { color: #999; }
+    .report-th.sort-active { color: var(--highlight); }
+    .report-td { padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .report-item:last-child > .report-td { border-bottom: none; }
+    .report-item:hover > .report-td.col-title { color: var(--highlight); text-decoration: underline; }
     .report-item { display: flex; align-items: center; gap: 3px; padding: 10px 0; border-bottom: 1px solid var(--border); cursor: pointer; min-width: 0; }
     .report-item:last-child { border-bottom: none; }
     .report-item:hover .col-title { color: var(--highlight); text-decoration: underline; }
-    .col-id    { width: 26px;  flex-shrink: 0; font-size: .78rem; font-weight: 700; color: var(--highlight); font-variant-numeric: tabular-nums; }
+    .col-id    { font-size: .78rem; font-weight: 700; color: var(--highlight); font-variant-numeric: tabular-nums; }
     .col-title { flex: 1; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; font-size: .88rem; }
-    .col-date  { width: 76px;  flex-shrink: 0; font-size: .76rem; color: var(--muted); text-align: right; }
-    .col-num   { width: 20px;  flex-shrink: 0; font-size: .76rem; color: var(--muted); text-align: right; }
-    .col-proto { width: 44px;  flex-shrink: 0; font-size: .76rem; color: var(--muted); text-align: center; }
-    .col-user  { width: 44px;  flex-shrink: 0; font-size: .76rem; color: var(--muted); text-align: right; }
+    .col-data  { font-size: .76rem; color: var(--muted); }
     .options-wrap { position: relative; flex-shrink: 0; }
     .options-btn { background: rgba(0,0,0,.15); border: none; color: rgba(255,255,255,.75); font-size: 1.6rem; font-weight: 700; line-height: 1; cursor: pointer; padding: 4px 8px; border-radius: 8px; transition: color .15s, background .15s; }
     .options-btn:hover, .options-btn:active, .options-btn.open { color: #fff; background: rgba(0,0,0,.25); }
@@ -65,7 +69,7 @@
     #upload-summary { display: none; font-size: .85rem; color: var(--text-muted); margin-top: 8px; padding: 8px; background: #f5f5f5; border-radius: 6px; }
     #add-p-submit-btn, #add-user-submit-btn { background: var(--add-green); }
     #add-p-submit-btn:hover, #add-user-submit-btn:hover { background: color-mix(in srgb, var(--add-green) 75%, #000); }
-    #users-list .col-id { width: 60px; border-right: 1px solid #f0f0f0; padding-right: 10px; }
+    #users-list .col-id { border-right: 1px solid #f0f0f0; padding-right: 10px; }
     #upload-msg-area { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
     #upload-msg { font-size: .9rem; }
     .file-pick-btn { display: block; width: 100%; padding: 14px; background: var(--tertiary); color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; text-align: center; margin-top: 8px; }
@@ -360,72 +364,148 @@
     if (reportParam) openReportByParam(reportParam);
   }
 
-  function arrow(key) {
-    if (sortKey !== key) return '';
-    return sortDir === 1
-      ? '<span class="sort-arr asc"></span>'
-      : '<span class="sort-arr desc"></span>';
-  }
+  // ── Column definitions ────────────────────────────────────────────────
+  // flex:'1' → minmax(0,1fr) grid track; omit flex → auto track (content-sized)
+  // colDef: { key, label, flex, ellipsis, align, cellClassName, noSort, cell: r=>string }
 
-  function hdrSpan(label, key, extraStyle = '') {
-    const active = sortKey === key ? ' sort-active' : '';
-    return `<span class="${active}" style="${extraStyle}" onclick="setSort('${key}')">${label}${arrow(key)}</span>`;
-  }
+  const isAdminReport = r => r.scope === 'admin' || (!r.user_id && !r.protocol_id && !r.report_number);
 
-  function renderReports(reports, container, showId = false) {
-    if (!reports.length) {
-      container.innerHTML = '<p class="msg">No reports available.</p>';
+  const MY_REPORT_COLS = [
+    { key: 'title',         label: 'Report', flex: '1', ellipsis: true, noSort: true,
+      cellClassName: 'col-title', cell: r => r.title },
+    { key: 'report_date',   label: 'Date',   align: 'right', noSort: true,
+      cellClassName: 'col-data',  cell: r => r.report_date ?? '' },
+    { key: 'report_number', label: '#',      align: 'right', noSort: true,
+      cellClassName: 'col-data',  cell: r => r.report_number != null ? String(r.report_number) : '' },
+  ];
+
+  const REPORT_COLS = [
+    { key: 'id',            label: 'ID',
+      cellClassName: 'col-id',   cell: r => String(r.id) },
+    { key: 'title',         label: 'Name',  flex: '1', ellipsis: true,
+      cellClassName: 'col-title', cell: r => r.title },
+    { key: 'report_date',   label: 'Date',  align: 'right',
+      cellClassName: 'col-data',  cell: r => isAdminReport(r) ? '' : (r.report_date ?? '—') },
+    { key: 'report_number', label: '#',     align: 'right',
+      cellClassName: 'col-data',  cell: r => isAdminReport(r) ? '' : (r.report_number != null ? String(r.report_number) : '—') },
+    { key: 'protocol_id',   label: 'Code',  align: 'left',
+      cellClassName: 'col-data',  cell: r => isAdminReport(r) ? '' : (r.protocol_id ?? '—') },
+    { key: 'user_id',       label: 'User',  align: 'right',
+      cellClassName: 'col-data',  cell: r => isAdminReport(r) ? '' : (r.user_id ?? '—') },
+  ];
+
+  const USER_COLS = [
+    { key: 'user_id', label: 'User ID',
+      cellClassName: 'col-id',   cell: u => u.user_id },
+    { key: 'name',    label: 'Name',          flex: '1', ellipsis: true,
+      cellClassName: 'col-title', cell: u => u.name || '—' },
+    { key: 'email',   label: 'Email Address', flex: '1', ellipsis: true, align: 'right',
+      cellClassName: 'col-data',  cell: u => u.email },
+  ];
+
+  // ── Generic table renderer (CSS grid, display:contents rows) ──────────
+  // opts: { sortKey, sortDir, onSort, rowAttrs: r=>{attr:val}, onRowClick, emptyMsg }
+  function renderTable(container, colDefs, rows, opts = {}) {
+    const { sortKey, sortDir = 1, onSort, rowAttrs, onRowClick, emptyMsg = 'No items.' } = opts;
+
+    container.innerHTML = '';
+    if (!rows.length) {
+      container.style.display = '';
+      container.innerHTML = `<p class="msg">${emptyMsg}</p>`;
       return;
     }
-    container.innerHTML = '';
 
-    // Header row (sortable for admin)
-    const hdr = document.createElement('div');
-    hdr.className = 'report-list-header';
-    if (showId) {
-      hdr.innerHTML =
-        hdrSpan('ID',    'id',            'width:26px;flex-shrink:0') +
-        hdrSpan('Name',  'title',         'flex:1;min-width:0') +
-        hdrSpan('Date',  'report_date',   'width:76px;text-align:right') +
-        hdrSpan('#',     'report_number', 'width:20px;text-align:right') +
-        hdrSpan('Code',  'protocol_id',   'width:44px;text-align:center') +
-        hdrSpan('User',  'user_id',       'width:44px;text-align:right');
-    } else {
-      hdr.innerHTML =
-        `<span style="flex:1">Report</span>` +
-        `<span style="width:76px;text-align:right">Date</span>` +
-        `<span style="width:22px;text-align:right">#</span>`;
-    }
-    container.appendChild(hdr);
+    // flex:'1' → minmax(0,1fr); minWidth set → minmax(X,auto); otherwise → auto
+    container.style.display             = 'grid';
+    container.style.gridTemplateColumns = colDefs.map(c =>
+      c.flex === '1' ? 'minmax(0,1fr)' :
+      c.minWidth     ? `minmax(${c.minWidth},auto)` : 'auto'
+    ).join(' ');
+    container.style.columnGap           = '8px';
+    container.style.alignItems          = 'center';
 
-    reports.forEach(r => {
+    // Header — display:contents so spans slot directly into the grid
+    const hdrDiv = document.createElement('div');
+    hdrDiv.style.display = 'contents';
+    colDefs.forEach(col => {
+      const th = document.createElement('span');
+      th.className = 'report-th';
+      if (sortKey === col.key) th.classList.add('sort-active');
+      if (!col.noSort && onSort) { th.dataset.sortable = '1'; th.onclick = () => onSort(col.key); }
+      if (col.align) th.style.textAlign = col.align;
+      th.textContent = col.label;
+      if (sortKey === col.key) {
+        const arr = document.createElement('span');
+        arr.className = 'sort-arr ' + (sortDir === 1 ? 'asc' : 'desc');
+        th.appendChild(arr);
+      }
+      hdrDiv.appendChild(th);
+    });
+    container.appendChild(hdrDiv);
+
+    // Rows — display:contents so each row's cells slot into the same grid tracks
+    rows.forEach(r => {
       const div = document.createElement('div');
       div.className = 'report-item';
-      if (showId) {
-        const isAdminRow = r.scope === 'admin' || (!r.user_id && !r.protocol_id && !r.report_number);
-        if (isAdminRow) {
-          div.innerHTML =
-            `<span class="col-id">${r.id}</span>` +
-            `<span class="col-title">${r.title}</span>` +
-            (r.report_date ? `<span class="col-date" style="text-align:right">${r.report_date}</span>` : '');
-        } else {
-          div.innerHTML =
-            `<span class="col-id">${r.id}</span>` +
-            `<span class="col-title">${r.title}</span>` +
-            `<span class="col-date" style="text-align:right">${r.report_date ?? '—'}</span>` +
-            `<span class="col-num" style="text-align:right">${r.report_number ?? '—'}</span>` +
-            `<span class="col-proto">${r.protocol_id ?? '—'}</span>` +
-            `<span class="col-user" style="text-align:right">${r.user_id ?? '—'}</span>`;
-        }
-      } else {
-        div.innerHTML =
-          `<span class="col-title">${r.title}</span>` +
-          `<span class="col-date">${r.report_date ?? ''}</span>` +
-          `<span class="col-num">${r.report_number ?? ''}</span>`;
+      div.style.display = 'contents';
+      if (rowAttrs) {
+        Object.entries(rowAttrs(r)).forEach(([k, v]) => {
+          if (v == null) return;
+          if (k === 'style') {
+            // Merge into existing inline style rather than overwriting display:contents
+            v.split(';').forEach(decl => {
+              const i = decl.indexOf(':');
+              if (i > 0) div.style[decl.slice(0, i).trim()] = decl.slice(i + 1).trim();
+            });
+          } else {
+            div.setAttribute(k, v);
+          }
+        });
       }
-      div.onclick = () => openReport(r.id, r.title);
+      if (onRowClick) div.onclick = () => onRowClick(r);
+      colDefs.forEach(col => {
+        const td = document.createElement('span');
+        td.className = 'report-td';
+        if (col.cellClassName) td.classList.add(col.cellClassName);
+        if (col.align) td.style.textAlign = col.align;
+        if (col.ellipsis) {
+          td.style.minWidth     = '0';
+          td.style.overflow     = 'hidden';
+          td.style.textOverflow = 'ellipsis';
+          td.style.whiteSpace   = 'nowrap';
+        }
+        td.textContent = col.cell(r) ?? '';
+        if (col.ellipsis && td.textContent) td.title = td.textContent;
+        div.appendChild(td);
+      });
+      // If spanToEnd: make the first flex col span to the grid end, hide remaining cells
+      if (opts.spanToEnd && opts.spanToEnd(r)) {
+        const flexIdx = colDefs.findIndex(c => c.flex === '1');
+        if (flexIdx >= 0) {
+          div.children[flexIdx].style.gridColumn = `${flexIdx + 1} / -1`;
+          for (let i = flexIdx + 1; i < div.children.length; i++) {
+            div.children[i].style.display = 'none';
+          }
+        }
+      }
       container.appendChild(div);
     });
+  }
+
+  function renderReports(reports, container, isAdmin = false) {
+    if (isAdmin) {
+      renderTable(container, REPORT_COLS, reports, {
+        sortKey, sortDir, onSort: setSort,
+        spanToEnd: r => isAdminReport(r),
+        onRowClick: r => openReport(r.id, r.title),
+        emptyMsg: 'No reports available.',
+      });
+    } else {
+      renderTable(container, MY_REPORT_COLS, reports, {
+        onRowClick: r => openReport(r.id, r.title),
+        emptyMsg: 'No reports available.',
+      });
+    }
   }
 
   function setSort(key) {
@@ -763,42 +843,22 @@
   }
 
   function renderUsers(users) {
-    const list = $('users-list');
-    if (!users.length) {
-      list.innerHTML = '<p class="msg">No users found.</p>';
-      return;
-    }
     const sorted = [...users].sort((a, b) => {
       const av = (a[userSortKey] ?? '').toString().toLowerCase();
       const bv = (b[userSortKey] ?? '').toString().toLowerCase();
       return av < bv ? -userSortDir : av > bv ? userSortDir : 0;
     });
-    function uArrow(key) {
-      if (userSortKey !== key) return '';
-      return userSortDir === 1
-        ? '<span class="sort-arr asc"></span>'
-        : '<span class="sort-arr desc"></span>';
-    }
-    function uHdr(label, key, extraStyle = '') {
-      const active = userSortKey === key ? ' sort-active' : '';
-      return `<span class="${active}" style="${extraStyle}" onclick="setUserSort('${key}')">${label}${uArrow(key)}</span>`;
-    }
-    const header = `<div class="report-list-header">
-      ${uHdr('User ID',       'user_id', 'width:60px;flex-shrink:0')}
-      ${uHdr('Name',          'name',    'flex:1;min-width:0')}
-      ${uHdr('Email Address', 'email',   'flex-shrink:1;min-width:0;text-align:right')}
-    </div>`;
-    list.innerHTML = header + sorted.map(u => {
-      const hintParts = [];
-      if (u.notes)       hintParts.push(`Notes: ${u.notes}`);
-      if (u.expiry_date) hintParts.push(`Expires: ${u.expiry_date}`);
-      else               hintParts.push('No expiry');
-      return `<div class="report-item" title="${hintParts.join(' · ')}" style="cursor:default">
-        <span class="col-id">${u.user_id}</span>
-        <span class="col-title">${u.name || '—'}</span>
-        <span style="font-size:.78rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:1;min-width:0;text-align:right">${u.email}</span>
-      </div>`;
-    }).join('');
+    renderTable($('users-list'), USER_COLS, sorted, {
+      sortKey: userSortKey, sortDir: userSortDir, onSort: setUserSort,
+      rowAttrs: u => {
+        const parts = [];
+        if (u.notes)       parts.push('Notes: ' + u.notes);
+        if (u.expiry_date) parts.push('Expires: ' + u.expiry_date);
+        else               parts.push('No expiry');
+        return { style: 'cursor:default', title: parts.join(' · ') };
+      },
+      emptyMsg: 'No users found.',
+    });
   }
 
   function setUserSort(key) {
