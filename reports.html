@@ -566,7 +566,7 @@
     if (isParticipant) {
       const parts = uploadFile.name.slice(0, -5).split('-');
       const [pid, proto, dateRaw, num] = parts;
-      summary.textContent = `${sizeStr} — Participant: ${pid} — Notes: ${proto} — Date: ${dateRaw.replace(/_/g, '-')} — #${num}`;
+      summary.textContent = `${sizeStr} — Participant: ${pid} — Protocol: ${proto} — Date: ${dateRaw.replace(/_/g, '-')} — #${num}`;
     } else {
       summary.textContent = sizeStr;
     }
