@@ -29,7 +29,7 @@
     }
     h2 { font-size: 1.1rem; color: #333; margin-bottom: 18px; }
     h3 { font-size: .9rem; font-weight: 600; color: #666; margin: 6px 0 14px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; }
-    .err { color: var(--err); font-weight: 600; display: inline-block; background: #fdecea; border-radius: 20px; padding: 5px 14px; }
+    .err { color: var(--err); font-weight: 600; display: inline-block; background: #fdecea; border-radius: 20px; padding: 8px 16px; margin: 12px 0; }
     .ok  { color: #27ae60; font-weight: 600; display: table; margin: 8px auto 0; background: #eafaf1; border-radius: 20px; padding: 5px 14px; }
     .report-list-header { display: flex; align-items: center; gap: 8px; padding: 0 0 7px; border-bottom: 2px solid #f0f0f0; margin-bottom: 4px; }
     .report-list-header span { font-size: .67rem; font-weight: 700; color: #bbb; text-transform: uppercase; letter-spacing: .04em; cursor: pointer; user-select: none; overflow: hidden; white-space: nowrap; }
@@ -60,7 +60,10 @@
     }
     #report-viewer.open { display: flex; }
     #upload-summary { display: none; font-size: .85rem; color: var(--text-muted); margin-top: 8px; padding: 8px; background: #f5f5f5; border-radius: 6px; }
-    #upload-msg { font-size: .9rem; text-align: center; margin-top: 8px; }
+    #add-p-submit-btn { background: #03450a; }
+    #add-p-submit-btn:hover { background: color-mix(in srgb, #03450a 75%, #000); }
+    #upload-msg-area { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+    #upload-msg { font-size: .9rem; }
     .file-pick-btn { display: block; width: 100%; padding: 14px; background: var(--tertiary); color: #fff; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; text-align: center; margin-top: 8px; }
     .file-pick-btn:hover { background: var(--tertiary-dark); }
     #upload-file { display: none; }
@@ -120,7 +123,7 @@
       <label for="upload-file" class="file-pick-btn" id="file-pick-label">Select HTML file</label>
       <div id="upload-summary"></div>
       <div id="scope-row" style="display:none;margin-top:10px">
-        <p class="msg" style="text-align:left;margin-bottom:6px;font-size:.78rem">Scope (auto-detected — tap to change):</p>
+        <p id="scope-label" class="msg" style="text-align:left;margin-bottom:6px;font-size:.78rem">Scope (auto-detected — tap to change):</p>
         <div style="display:flex;gap:8px">
           <button id="scope-participant">Participant</button>
           <button id="scope-admin">Admin</button>
@@ -133,7 +136,33 @@
         </label>
       </div>
       <button class="primary" id="upload-btn" disabled style="margin-top:12px">Upload</button>
-      <div id="upload-msg" class="msg"></div>
+      <div id="upload-msg-area">
+        <div id="upload-msg" class="msg"></div>
+        <p id="add-participant-hint" style="display:none;font-size:.8rem;color:#888;margin:0">To add this participant now tap the button below...</p>
+      </div>
+
+      <div id="add-participant-wrap" style="display:none;margin-bottom:20px">
+        <button id="add-participant-btn" style="width:100%;padding:10px 14px;border:1.5px solid;border-radius:8px;font-size:.88rem;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between">
+          Add Participant
+          <span class="expand-arrow">▾</span>
+        </button>
+        <div id="add-participant-section" style="display:none;flex-direction:column;gap:8px;margin-top:12px">
+          <div style="display:flex;gap:8px">
+            <div style="flex:1">
+              <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:4px">Participant ID</p>
+              <div id="add-p-id-display" style="padding:8px 10px;background:#f5f5f5;border-radius:6px;font-size:.9rem;font-family:monospace;color:#333"></div>
+            </div>
+            <div style="flex:1">
+              <p style="font-size:.75rem;color:var(--text-muted);margin-bottom:4px">Protocol Code (Notes)</p>
+              <div id="add-p-proto-display" style="padding:8px 10px;background:#f5f5f5;border-radius:6px;font-size:.9rem;font-family:monospace;color:#333"></div>
+            </div>
+          </div>
+          <input id="add-p-name" type="text" placeholder="Name" style="margin:0">
+          <input id="add-p-email" type="email" placeholder="Email address" style="margin:0">
+          <button class="primary" id="add-p-submit-btn">Add Participant &amp; Redo</button>
+          <div id="add-p-msg" class="msg"></div>
+        </div>
+      </div>
 
       <div style="margin-top:16px;border-top:1px solid #f0f0f0;padding-top:12px">
         <button id="resend-toggle-btn" style="width:100%;padding:10px 14px;border:1.5px solid;border-radius:8px;font-size:.88rem;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between">
@@ -482,6 +511,8 @@
     const btn     = $('upload-btn');
     const label   = $('file-pick-label');
     $('upload-msg').textContent = '';
+    $('add-participant-hint').style.display = 'none';
+    $('add-participant-wrap').style.display = 'none';
 
     if (!uploadFile) {
       summary.style.display         = 'none';
@@ -492,20 +523,34 @@
     }
     label.textContent     = uploadFile.name;
     summary.style.display = 'block';
-    summary.textContent   = `${(uploadFile.size / 1024).toFixed(1)} KB`;
     btn.disabled          = false;
 
     // Auto-detect scope: participant pattern = userId-code-yyyy_mm_dd-number-title.html
     const isParticipant = /^[^-]+-[^-]+-\d{4}_\d{2}_\d{2}-\d+-/.test(uploadFile.name);
+    const sizeStr = `${(uploadFile.size / 1024).toFixed(1)} KB`;
+    if (isParticipant) {
+      const parts = uploadFile.name.slice(0, -5).split('-');
+      const [pid, proto, dateRaw, num] = parts;
+      summary.textContent = `${sizeStr} — Participant: ${pid} — Notes: ${proto} — Date: ${dateRaw.replace(/_/g, '-')} — #${num}`;
+    } else {
+      summary.textContent = sizeStr;
+    }
     setScope(isParticipant ? 'participant' : 'admin');
     $('scope-row').style.display = 'block';
   });
 
-  $('upload-btn').onclick = async function() {
+  let pendingParticipantId = '';
+  let pendingProtocolId    = '';
+
+  expandableButton('add-participant-btn', 'add-participant-section', '#03450a');
+
+  async function doUpload() {
     if (!uploadFile) return;
-    this.disabled = true;
+    $('upload-btn').disabled    = true;
     $('upload-msg').textContent = 'Uploading…';
     $('upload-msg').className   = 'msg';
+    $('add-participant-hint').style.display = 'none';
+    $('add-participant-wrap').style.display = 'none';
 
     const form = new FormData();
     form.append('file', uploadFile);
@@ -531,16 +576,63 @@
         uploadFile   = null;
         uploadScope  = 'admin';
         adminReports = [];
-        this.disabled = true;
+        $('upload-btn').disabled = true;
         loadAdminReports();
       } else {
         $('upload-msg').textContent = data.error || 'Upload failed.';
         $('upload-msg').className   = 'msg err';
-        this.disabled = false;
+        $('upload-btn').disabled = false;
+        if (data.code === 'PARTICIPANT_NOT_FOUND') {
+          pendingParticipantId = data.participant_id || '';
+          pendingProtocolId    = data.protocol_id    || '';
+          $('add-p-id-display').textContent    = pendingParticipantId;
+          $('add-p-proto-display').textContent = pendingProtocolId;
+          $('add-p-name').value      = '';
+          $('add-p-email').value     = '';
+          $('add-p-msg').textContent = '';
+          $('add-p-msg').className   = 'msg';
+          $('add-p-submit-btn').disabled = false;
+          $('add-participant-hint').style.display = 'inline';
+          $('add-participant-wrap').style.display = 'block';
+        }
       }
     } catch {
       $('upload-msg').textContent = 'Network error. Try again.';
       $('upload-msg').className   = 'msg err';
+      $('upload-btn').disabled = false;
+    }
+  }
+
+  $('upload-btn').onclick = doUpload;
+
+  $('add-p-submit-btn').onclick = async function() {
+    const name  = $('add-p-name').value.trim();
+    const email = $('add-p-email').value.trim();
+    if (!name || !email) {
+      $('add-p-msg').textContent = 'Name and email are required.';
+      $('add-p-msg').className   = 'msg err';
+      return;
+    }
+    this.disabled = true;
+    $('add-p-msg').textContent = 'Adding participant…';
+    $('add-p-msg').className   = 'msg';
+    try {
+      const res  = await fetch(WORKER + '/admin/add-participant', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body:    JSON.stringify({ user_id: pendingParticipantId, name, email, notes: pendingProtocolId, log_enabled: 1, expiry_date: null }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        await doUpload();
+      } else {
+        $('add-p-msg').textContent = data.error || 'Failed to add participant.';
+        $('add-p-msg').className   = 'msg err';
+        this.disabled = false;
+      }
+    } catch {
+      $('add-p-msg').textContent = 'Network error. Try again.';
+      $('add-p-msg').className   = 'msg err';
       this.disabled = false;
     }
   };
@@ -558,6 +650,9 @@
     ['scope-participant', 'scope-admin'], ['participant', 'admin'],
     s => {
       uploadScope = s;
+      $('scope-label').textContent = s === 'participant'
+        ? 'Scope (auto-detected as Participant Report — tap to change):'
+        : 'Scope (auto-detected as Admin Report — tap to change):';
       $('notify-row').style.display = s === 'participant' ? 'block' : 'none';
       if (s !== 'participant') $('notify-check').checked = false;
     },
