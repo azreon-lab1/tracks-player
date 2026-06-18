@@ -257,7 +257,7 @@
   function launch() {
     const targetMs = new Date(session.start_at).getTime();
     const elapsed  = (serverNow() - targetMs) / 1000;
-    if (elapsed > 0.5) audio.currentTime = elapsed; // late join: seek to current position
+    audio.currentTime = Math.max(0, elapsed); // always seek: audio played muted during countdown
     audio.muted = false;
     setState('playing');
     $('playing-track').textContent = session.track.title;
