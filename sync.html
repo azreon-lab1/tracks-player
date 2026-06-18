@@ -138,7 +138,7 @@
   function setState(name) {
     STATES.forEach(s => {
       const el = $('state-' + s);
-      if (el) el.style.display = s === name ? '' : 'none';
+      if (el) el.style.display = s === name ? 'block' : 'none';
     });
   }
 
