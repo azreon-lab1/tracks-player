@@ -73,6 +73,7 @@
     .mode-toggle button.active { background: var(--primary); color: #fff; font-weight: 600; }
     .mode-toggle button:not(.active):hover { background: var(--track-hover); }
     .mode-hint { font-size: .72rem; color: var(--hint); text-align: center; margin-top: 6px; }
+    .toggle-divider { border: none; border-top: 1px solid #e8e8e8; margin: 14px 0 12px; }
   </style>
 </head>
 <body>
@@ -138,10 +139,20 @@
   <!-- Mode toggle template — injected into the chosen slot on load -->
   <template id="mode-toggle-template">
     <div class="mode-toggle" id="mode-toggle">
-      <button id="mode-blob"   onclick="setMode('blob')">Preload</button>
       <button id="mode-stream" onclick="setMode('stream')">Stream</button>
+      <button id="mode-blob"   onclick="setMode('blob')">Preload</button>
     </div>
     <div class="mode-hint" id="mode-hint"></div>
+  </template>
+
+  <!-- Wake-lock toggle — injected after the mode toggle in the same slot -->
+  <template id="wakelock-toggle-template">
+    <hr class="toggle-divider" id="wakelock-divider">
+    <div class="mode-toggle" id="wakelock-toggle">
+      <button id="wakelock-off" onclick="setWakeLock(false)"></button>
+      <button id="wakelock-on"  onclick="setWakeLock(true)"></button>
+    </div>
+    <div class="mode-hint" id="wakelock-hint"></div>
   </template>
 
 </div>
@@ -159,6 +170,10 @@
     MODE_STREAM_LABEL:  'Stream',
     MODE_BLOB_HINT:     'Downloads the full track first, then plays. Works offline once loaded.',
     MODE_STREAM_HINT:   'Plays immediately, streams as you listen. Needs a connection throughout.',
+    WAKELOCK_ON_LABEL:  'Keep Screen On',
+    WAKELOCK_OFF_LABEL: 'Allow Auto-Lock',
+    WAKELOCK_HINT_ON:   'Screen stays on while a track plays to avoid undesired pauses.',
+    WAKELOCK_HINT_OFF:  'Your screen may lock during playback and stop it.',
   };
 
   const HEADER_IMAGE_URL      = '';  // page-specific banner; '' = use HEADER_IMAGE_DEFAULT in ui.js
@@ -173,6 +188,7 @@
     'reports-btn',
     'my-reports-card',
     'mode-hint',
+    'wakelock-hint',
     // 'mode-card-bottom',
     // 'mode-toggle',
   ];
@@ -180,6 +196,10 @@
 
   let activeMode = localStorage.getItem('ap_mode') || DEFAULT_MODE;
   if (DEFAULT_MODE === 'hybrid') activeMode = 'hybrid';
+
+  const wakeLockSupported = 'wakeLock' in navigator;
+  let wakeLockEnabled = localStorage.getItem('ap_wakelock') === '1';
+  let wakeLockSentinel = null;
 
   if (!token) {
     const _tp = new URLSearchParams(location.search).get('track');
@@ -481,6 +501,7 @@
     showPause(false);
     stopHeartbeat();
     stopWatchdog();
+    releaseWakeLock();
     $('now-playing').textContent      = UI.NOW_PLAYING_IDLE;
     $('progress-played').style.width  = '0%';
     $('progress-thumb').style.left    = '0%';
@@ -494,6 +515,7 @@
     else if (hasPaused) { logEvent('resume'); hasPaused = false; }
     startHeartbeat();
     resetWatchdog();
+    acquireWakeLock();
   });
 
   audio.addEventListener('timeupdate', () => {
@@ -511,6 +533,7 @@
     if (!audio.ended) { logEvent('pause'); hasPaused = true; }
     stopHeartbeat();
     stopWatchdog();
+    releaseWakeLock();
   });
   audio.addEventListener('waiting', () => { if (!audio.ended) setLoading(true); });
   audio.addEventListener('playing', () => setLoading(false));
@@ -556,6 +579,7 @@
       logEvent('foreground');
       lastPosition = audio.currentTime;
       if (!audio.paused) resetWatchdog();
+      acquireWakeLock();
     }
   });
 
@@ -574,6 +598,11 @@
       if (bottomCard) bottomCard.style.display = 'none';
       const t = $('mode-toggle');
       if (t) t.style.marginTop = '14px';
+    }
+    const wlTmpl = $('wakelock-toggle-template');
+    if (wlTmpl && slot && wakeLockSupported) {
+      slot.appendChild(wlTmpl.content.cloneNode(true));
+      syncWakeLockUI();
     }
   }
 
@@ -601,6 +630,37 @@
     $('mode-blob').textContent   = UI.MODE_BLOB_LABEL;
     $('mode-stream').textContent = UI.MODE_STREAM_LABEL;
     if (hint) hint.textContent = activeMode === 'blob' ? UI.MODE_BLOB_HINT : UI.MODE_STREAM_HINT;
+  }
+
+  async function acquireWakeLock() {
+    if (!wakeLockEnabled || !wakeLockSupported || wakeLockSentinel || audio.paused) return;
+    try {
+      wakeLockSentinel = await navigator.wakeLock.request('screen');
+      wakeLockSentinel.addEventListener('release', () => { wakeLockSentinel = null; });
+    } catch (e) { /* device may deny the request */ }
+  }
+
+  async function releaseWakeLock() {
+    try { if (wakeLockSentinel) { await wakeLockSentinel.release(); wakeLockSentinel = null; } }
+    catch (e) {}
+  }
+
+  function setWakeLock(on) {
+    wakeLockEnabled = on;
+    localStorage.setItem('ap_wakelock', on ? '1' : '0');
+    syncWakeLockUI();
+    if (on) acquireWakeLock(); else releaseWakeLock();
+  }
+
+  function syncWakeLockUI() {
+    const toggle = $('wakelock-toggle');
+    const hint   = $('wakelock-hint');
+    if (!toggle) return;
+    $('wakelock-off').classList.toggle('active', !wakeLockEnabled);
+    $('wakelock-on').classList.toggle('active',   wakeLockEnabled);
+    $('wakelock-off').textContent = UI.WAKELOCK_OFF_LABEL;
+    $('wakelock-on').textContent  = UI.WAKELOCK_ON_LABEL;
+    if (hint) hint.textContent = wakeLockEnabled ? UI.WAKELOCK_HINT_ON : UI.WAKELOCK_HINT_OFF;
   }
 
   let loadingDelayTimer = null;
