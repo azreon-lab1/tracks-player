@@ -134,6 +134,7 @@
       <div id="my-reports-list"></div>
     </div>
     <button class="secondary" id="reports-btn" style="display:none">Reports</button>
+    <button class="secondary" id="join-session-btn" style="display:none"></button>
   </div>
 
   <!-- Mode toggle template — injected into the chosen slot on load -->
@@ -174,6 +175,7 @@
     WAKELOCK_OFF_LABEL: 'Allow Auto-Lock',
     WAKELOCK_HINT_ON:   'Screen stays on while a track plays to avoid undesired pauses.',
     WAKELOCK_HINT_OFF:  'Your screen may lock during playback and stop it.',
+    JOIN_SESSION_BTN:   'Join Shared Track',
   };
 
   const HEADER_IMAGE_URL      = '';  // page-specific banner; '' = use HEADER_IMAGE_DEFAULT in ui.js
@@ -256,6 +258,19 @@
         $('reports-btn').style.display = '';
       }
     }
+
+    // Check for an active sync session
+    fetch(WORKER + '/syncsession/active', { headers: { Authorization: 'Bearer ' + token } })
+      .then(r => r.ok ? r.json() : null)
+      .then(syncData => {
+        if (syncData?.session) {
+          const btn = $('join-session-btn');
+          btn.textContent = UI.JOIN_SESSION_BTN;
+          btn.style.display = '';
+          btn.onclick = () => { location.href = 'sync.html?session=' + syncData.session.id; };
+        }
+      })
+      .catch(() => {});
 
     $('startup-loading').style.display = 'none';
     $('player-section').style.display  = 'block';
