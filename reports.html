@@ -845,55 +845,23 @@
   let userSortDir  = 1;
 
   expandableButton('add-user-btn', 'add-user-section', ADD_GREEN);
-  expandableButton('give-tracks-btn', 'give-tracks-section');
 
   // ── Give Tracks Access (Add User flow only) ─────────────────────────
-  let allTracksList  = [];
-  let tracksScope    = 'specific';
+  const giveTracksPicker = trackGrantPicker({
+    expandBtn: 'give-tracks-btn', section: 'give-tracks-section',
+    specificBtn: 'tracks-specific-btn', allBtn: 'tracks-all-btn',
+    checks: 'tracks-checks', deselectBtn: 'tracks-deselect-btn', expiry: 'tracks-expiry',
+  });
 
-  const setTracksScope = toggleSelector(
-    ['tracks-specific-btn', 'tracks-all-btn'], ['specific', 'all'],
-    s => {
-      tracksScope = s;
-      $('tracks-checks').style.display       = s === 'specific' ? 'grid' : 'none';
-      $('tracks-deselect-btn').style.display = s === 'specific' ? ''     : 'none';
-      updateAddUserBtnText();
-    }
-  );
-  setTracksScope('specific');
-
-  async function loadAdminTracksList() {
-    try {
-      const res  = await fetch(WORKER + '/admin/tracks', {
-        headers: { Authorization: 'Bearer ' + token },
-      });
-      const data = await res.json();
-      allTracksList = data.tracks || [];
-      renderTrackChecks();
-    } catch {
-      $('tracks-checks').innerHTML = '<p class="msg err">Failed to load tracks.</p>';
-    }
-  }
-
-  function renderTrackChecks() {
-    $('tracks-checks').innerHTML = allTracksList.map(t =>
-      `<label style="display:flex;align-items:center;gap:8px;font-size:.82rem;padding:6px 10px;border:1px solid var(--border);border-radius:7px;cursor:pointer">
-        <input type="checkbox" class="track-check" value="${t.id}" style="width:auto;margin:0">
-        ${t.track_code} — ${t.title}
-      </label>`
-    ).join('');
-  }
-
-  $('tracks-deselect-btn').onclick = () => {
-    document.querySelectorAll('.track-check').forEach(c => c.checked = false);
-    updateAddUserBtnText();
-  };
+  function loadAdminTracksList() { return giveTracksPicker.load(); }
 
   $('tracks-checks').addEventListener('change', updateAddUserBtnText);
+  $('tracks-deselect-btn').addEventListener('click', updateAddUserBtnText);
+  $('tracks-specific-btn').addEventListener('click', updateAddUserBtnText);
+  $('tracks-all-btn').addEventListener('click', updateAddUserBtnText);
 
   function updateAddUserBtnText() {
-    const hasTracks = tracksScope === 'all' || document.querySelectorAll('.track-check:checked').length > 0;
-    $('add-user-submit-btn').textContent = hasTracks ? 'Add User & Tracks Access' : 'Add User';
+    $('add-user-submit-btn').textContent = giveTracksPicker.hasSelection() ? 'Add User & Tracks Access' : 'Add User';
   }
 
   async function loadUsers() {
@@ -922,8 +890,9 @@
         if (u.notes)       parts.push('Notes: ' + u.notes);
         if (u.expiry_date) parts.push('Expires: ' + u.expiry_date);
         else               parts.push('No expiry');
-        return { style: 'cursor:default', title: parts.join(' · ') };
+        return { style: 'cursor:pointer', title: parts.join(' · ') };
       },
+      onRowClick: u => { location.href = 'manage-user.html?user_id=' + encodeURIComponent(u.user_id); },
       emptyMsg: 'No users found.',
     });
   }
@@ -958,12 +927,9 @@
       if (res.ok && data.success) {
         let message = data.message || 'User added.';
 
-        const trackIds = tracksScope === 'all'
-          ? 'all'
-          : [...document.querySelectorAll('.track-check:checked')].map(c => Number(c.value));
+        const { trackIds, expiryDate: tracksExpiry } = giveTracksPicker.getSelection();
 
         if (trackIds === 'all' || trackIds.length > 0) {
-          const tracksExpiry = $('tracks-expiry').value || null;
           try {
             const tRes  = await fetch(WORKER + '/admin/grant-tracks', {
               method:  'POST',
@@ -984,9 +950,8 @@
         $('add-user-email').value  = '';
         $('add-user-notes').value  = '';
         $('add-user-expiry').value = '';
-        $('tracks-expiry').value   = '';
-        document.querySelectorAll('.track-check').forEach(c => c.checked = false);
-        setTracksScope('specific');
+        giveTracksPicker.reset();
+        updateAddUserBtnText();
         loadUsers();
       } else {
         $('add-user-msg').textContent = data.error || 'Failed to add user.';
