@@ -93,9 +93,78 @@ function expandableButton(btnId, sectionId, colour) {
   setState(false);
 }
 
+// Reusable "grant tracks" picker: scope toggle (specific/all) + checkbox grid + expiry date.
+// Used by both the Add User flow (reports.html) and Manage User (manage-user.html) so the
+// component only needs to look and behave one way.
+// ids: { expandBtn, section, specificBtn, allBtn, checks, deselectBtn?, expiry, colour? }
+function trackGrantPicker(ids) {
+  let allTracksList = [];
+  let scope          = 'specific';
+
+  expandableButton(ids.expandBtn, ids.section, ids.colour);
+
+  const setScope = toggleSelector(
+    [ids.specificBtn, ids.allBtn], ['specific', 'all'],
+    s => {
+      scope = s;
+      $(ids.checks).style.display = s === 'specific' ? 'grid' : 'none';
+      if (ids.deselectBtn) $(ids.deselectBtn).style.display = s === 'specific' ? '' : 'none';
+    },
+    ids.colour
+  );
+  setScope('specific');
+
+  function renderChecks() {
+    $(ids.checks).innerHTML = allTracksList.map(t =>
+      `<label style="display:flex;align-items:center;gap:8px;font-size:.82rem;padding:6px 10px;border:1px solid var(--border);border-radius:7px;cursor:pointer">
+        <input type="checkbox" class="${ids.checks}-check" value="${t.id}" style="width:auto;margin:0">
+        ${t.track_code} — ${t.title}
+      </label>`
+    ).join('');
+  }
+
+  if (ids.deselectBtn) {
+    $(ids.deselectBtn).onclick = () => {
+      document.querySelectorAll('.' + ids.checks + '-check').forEach(c => c.checked = false);
+    };
+  }
+
+  async function load() {
+    try {
+      const res  = await fetch(WORKER + '/admin/tracks', { headers: { Authorization: 'Bearer ' + token } });
+      const data = await res.json();
+      allTracksList = data.tracks || [];
+      renderChecks();
+    } catch {
+      $(ids.checks).innerHTML = '<p class="msg err">Failed to load tracks.</p>';
+    }
+  }
+
+  function getSelection() {
+    const trackIds = scope === 'all'
+      ? 'all'
+      : [...document.querySelectorAll('.' + ids.checks + '-check:checked')].map(c => Number(c.value));
+    return { scope, trackIds, expiryDate: $(ids.expiry).value || null };
+  }
+
+  function hasSelection() {
+    return scope === 'all' || document.querySelectorAll('.' + ids.checks + '-check:checked').length > 0;
+  }
+
+  function reset() {
+    // Clear checkboxes before resetting scope — if a future onChange callback
+    // ever reads checkbox state, order matters (see plan-manage-user.md gotchas).
+    document.querySelectorAll('.' + ids.checks + '-check').forEach(c => c.checked = false);
+    setScope('specific');
+    $(ids.expiry).value = '';
+  }
+
+  return { load, getSelection, hasSelection, reset };
+}
+
 function toggleSelector(btnIds, values, onChange, colour) {
   const c           = colour || 'var(--tertiary)';
-  const activeStyle   = `flex:1;padding:8px;border:1.5px solid ${c};border-radius:8px;font-size:.85rem;background:var(--tertiary-light);cursor:pointer;font-weight:600;color:${c}`;
+  const activeStyle   = `flex:1;padding:8px;border:1.5px solid ${c};border-radius:8px;font-size:.85rem;background:color-mix(in srgb, ${c} 8%, white);cursor:pointer;font-weight:600;color:${c}`;
   const inactiveStyle = 'flex:1;padding:8px;border:1.5px solid var(--border-muted);border-radius:8px;font-size:.85rem;background:#fff;cursor:pointer;color:var(--text-muted)';
   function set(val) {
     btnIds.forEach((id, i) => $(id).style.cssText = values[i] === val ? activeStyle : inactiveStyle);

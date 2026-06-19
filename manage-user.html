@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Manage User — Azreon Tracks Platform</title>
+  <link rel="stylesheet" href="base.css">
+  <style>
+    :root {
+      --bg:             #0a0604;
+      --bg-image:       radial-gradient(ellipse at 85% 85%, rgba(127,105,58,.90) 0%, transparent 130%),
+                        radial-gradient(ellipse at 8% 10%, rgba(10,6,2,.85) 0%, transparent 45%),
+                        linear-gradient(145deg, #0a0604 0%, #1a1408 35%, #3a2e1a 60%, #7f693a 100%);
+      --primary:        #030e36;
+      --primary-dark:   color-mix(in srgb, var(--primary)   55%, #000);
+      --secondary:      #15032b;
+      --secondary-dark: color-mix(in srgb, var(--secondary) 55%, #000);
+      --tertiary:       #a15a24;
+      --tertiary-dark:  color-mix(in srgb, var(--tertiary)  75%, #000);
+      --tertiary-light: color-mix(in srgb, var(--tertiary)   8%, white);
+      --loading-colour: #d4a843;
+      --highlight:      #a2561b;
+      --text:           #222;
+      --muted:          #888;
+      --text-muted:     #555;
+      --border-muted:   #ddd;
+      --err:            #c0392b;
+      --border:         #eee;
+      --card-arrow-open:   color-mix(in srgb, var(--secondary) 55%, black);
+      --card-arrow-closed: color-mix(in srgb, var(--tertiary)  80%, black);
+      --add-green:   #03450a;
+      --danger:      #c0392b;
+      --danger-dark: color-mix(in srgb, var(--danger) 75%, #000);
+      --warning:      #e8b923;
+      --warning-dark: color-mix(in srgb, var(--warning) 75%, #000);
+      --warning-text: #000;
+    }
+    h2 { font-size: 1.1rem; color: #333; margin-bottom: 18px; }
+    h3 { font-size: .9rem; font-weight: 600; color: #666; margin: 6px 0 14px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; }
+    .options-wrap { position: relative; flex-shrink: 0; }
+    .options-btn { background: rgba(0,0,0,.15); border: none; color: rgba(255,255,255,.75); font-size: 1.6rem; font-weight: 700; line-height: 1; cursor: pointer; padding: 4px 8px; border-radius: 8px; transition: color .15s, background .15s; }
+    .options-btn:hover, .options-btn:active, .options-btn.open { color: #fff; background: rgba(0,0,0,.25); }
+    .options-menu { display: none; position: absolute; top: calc(100% + 8px); right: 0; background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.18); min-width: 200px; overflow: hidden; z-index: 100; }
+    #main-content { display: none; }
+    .page-header { display: flex; align-items: center; gap: 0; margin-bottom: 16px; }
+    .page-header a { color: #fff; text-decoration: none; font-size: .9rem; opacity: .85; padding-right: 14px; flex-shrink: 0; }
+    .page-header a:hover { opacity: 1; text-decoration: underline; }
+    .page-header .divider { width: 1px; height: 18px; background: rgba(255,255,255,0.4); margin-right: 14px; flex-shrink: 0; }
+    .page-header h1 { flex: 1; margin-bottom: 0; text-align: left; color: #fff; font-size: 1.3rem; }
+    .field-row { display: flex; flex-direction: column; gap: 8px; }
+    #grant-tracks-submit-btn { background: var(--add-green); }
+    #grant-tracks-submit-btn:hover { background: color-mix(in srgb, var(--add-green) 75%, #000); }
+    #discard-detail-btn { background: var(--tertiary); border: none; border-radius: 8px; cursor: pointer; color: #fff; font-size: 1rem; padding: 14px; }
+    #discard-detail-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--tertiary) 75%, #000); }
+    #discard-detail-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .field-label { font-size: .78rem; color: var(--text-muted); margin: 4px 0 0; }
+    .track-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 7px; font-size: .85rem; }
+    .track-row .track-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .track-row .track-expiry { color: var(--muted); font-size: .76rem; white-space: nowrap; }
+    .track-row button { flex-shrink: 0; padding: 4px 10px; font-size: .76rem; background: none; border: 1px solid var(--err); color: var(--err); border-radius: 6px; cursor: pointer; }
+    .track-row button:hover { background: #fdecea; }
+    #delete-user-section { border: 1.5px solid var(--danger); border-radius: 10px; padding: 14px; }
+    #delete-user-btn { width: 100%; background: var(--warning); color: var(--warning-text); border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; padding: 14px; cursor: pointer; }
+    #delete-user-btn:hover { background: var(--warning-dark); }
+    #delete-confirm-btn { width: 100%; background: var(--danger); color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; padding: 14px; cursor: pointer; }
+    #delete-confirm-btn:hover { background: var(--danger-dark); }
+    #delete-confirm-divider { border-top: 1px solid #f0f0f0; margin-top: 4px; }
+    #delete-cancel-btn { width: 100%; background: var(--secondary); border: none; border-radius: 8px; font-size: 1rem; padding: 14px; cursor: pointer; color: #fff; }
+    #delete-cancel-btn:hover { background: color-mix(in srgb, var(--secondary) 75%, #000); }
+    #delete-confirm-row { display: none; flex-direction: column; gap: 16px; margin-top: 10px; }
+    .ok  { color: #27ae60; font-weight: 600; display: table; margin: 8px auto 0; background: #eafaf1; border-radius: 20px; padding: 5px 14px; }
+    .err { color: var(--err); font-weight: 600; display: inline-block; background: #fdecea; border-radius: 20px; padding: 8px 16px; margin: 12px 0; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div id="startup-loading">
+    <div class="card" style="text-align:center;padding:32px 24px;display:inline-block;min-width:200px">
+      <div class="startup-bar" style="margin:0 auto 12px"></div>
+      <div class="startup-label" style="display:block;color:#888">Loading…</div>
+    </div>
+  </div>
+
+  <div id="main-content">
+    <div class="page-header">
+      <a href="reports.html">&#8592; Management</a>
+      <div class="divider"></div>
+      <h1>Manage User</h1>
+      <div class="options-wrap" id="options-wrap">
+        <button class="options-btn" id="options-btn" aria-label="Options" aria-expanded="false">⋮</button>
+        <div class="options-menu" id="options-menu">
+          <div class="options-email" id="options-email"></div>
+          <button class="options-item options-item-danger" id="logout-btn">Log Out</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="header-banner" style="display:none;margin-bottom:16px">
+      <img id="header-img" src="" alt="" draggable="false"
+           style="border-radius:12px;display:block;margin:0 auto;pointer-events:none;-webkit-user-select:none;user-select:none;">
+    </div>
+
+    <div id="not-found-msg" style="display:none">
+      <p class="msg err">User not found.</p>
+    </div>
+
+    <div id="user-content" style="display:none">
+
+      <div class="card" id="detail-card">
+        <h2>User Detail</h2>
+        <div class="field-row">
+          <p class="field-label">User ID</p>
+          <div id="detail-userid-display" style="padding:8px 10px;background:#f5f5f5;border-radius:6px;font-size:.9rem;font-family:monospace;color:#333"></div>
+
+          <p class="field-label">Name</p>
+          <input id="detail-name" type="text" style="margin:0">
+
+          <p class="field-label">Email address</p>
+          <input id="detail-email" type="email" style="margin:0">
+
+          <p class="field-label">Notes</p>
+          <input id="detail-notes" type="text" style="margin:0">
+
+          <p class="field-label">Expiry date (optional)</p>
+          <input id="detail-expiry" type="date" style="margin:0">
+
+          <p class="field-label" style="margin-top:4px">Logging</p>
+          <div style="display:flex;gap:8px">
+            <button id="log-enabled-btn" style="flex:1">Enabled</button>
+            <button id="log-disabled-btn" style="flex:1">Disabled</button>
+          </div>
+
+          <p class="field-label">Role</p>
+          <div style="display:flex;gap:8px">
+            <button id="role-participant-btn" style="flex:1">Participant</button>
+            <button id="role-admin-btn" style="flex:1">Admin</button>
+          </div>
+
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="primary" id="save-detail-btn" style="flex:1;margin-top:0" disabled>Save Changes</button>
+            <button id="discard-detail-btn" style="flex:1" disabled>Discard</button>
+          </div>
+          <div id="detail-msg" class="msg"></div>
+        </div>
+      </div>
+
+      <div class="card" id="tracks-card">
+        <h2>Track Access</h2>
+        <h3>Granted tracks</h3>
+        <div id="granted-tracks-list"><p class="msg">Loading…</p></div>
+
+        <div style="margin-top:16px;border-top:1px solid #f0f0f0;padding-top:12px">
+          <button id="grant-tracks-btn" style="width:100%;padding:10px 14px;border:1.5px solid;border-radius:8px;font-size:.88rem;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between">
+            Grant Track Access
+            <span class="expand-arrow">▾</span>
+          </button>
+          <div id="grant-tracks-section" style="display:none;flex-direction:column;gap:8px;margin-top:12px">
+            <div style="display:flex;gap:8px">
+              <button id="grant-specific-btn" style="flex:1">Specific tracks</button>
+              <button id="grant-all-btn" style="flex:1">All tracks</button>
+            </div>
+            <div id="grant-checks" style="display:grid;grid-template-columns:1fr 1fr;gap:6px"></div>
+            <button id="grant-deselect-btn" type="button" style="align-self:flex-start;background:none;border:none;color:var(--tertiary);font-size:.8rem;padding:0;cursor:pointer;text-decoration:underline">Deselect all</button>
+            <p style="font-size:.78rem;color:var(--text-muted);margin:4px 0 0">Track access expiry (optional, applies to all granted tracks)</p>
+            <input id="grant-expiry" type="date" style="margin:0">
+            <button class="primary" id="grant-tracks-submit-btn" style="margin-top:4px">Grant Access</button>
+            <div id="grant-tracks-msg" class="msg"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="delete-card">
+        <h2>Delete User</h2>
+        <div id="delete-user-section">
+          <p style="font-size:.95rem;color:var(--text-muted);margin:0 0 18px">
+            This revokes the user's access and archives their data (participant record,
+            track grants, and play logs). Nothing is destroyed.
+          </p>
+          <button id="delete-user-btn">Delete User</button>
+          <div id="delete-confirm-row">
+            <div id="delete-confirm-divider"></div>
+            <p style="font-size:1.05rem;font-weight:600;color:var(--danger);margin:0 0 6px">
+              Are you sure? This cannot be undone from this page.
+            </p>
+            <button id="delete-confirm-btn">
+              Yes, delete this user
+            </button>
+            <button id="delete-cancel-btn">
+              Cancel
+            </button>
+          </div>
+          <div id="delete-msg" class="msg"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="shared.js"></script>
+<script>
+  const HEADER_IMAGE_URL    = '';
+  const HEADER_IMAGE_HEIGHT = '';
+  const HEADER_IMAGE_FILTER = '';
+
+  if (!token) location.replace('index.html');
+
+  const userId = new URLSearchParams(location.search).get('user_id');
+  if (!userId) location.replace('reports.html');
+
+  let currentUser    = null;
+  let grantedTracks  = [];
+  let detailSnapshot = null;
+
+  expandableCard('detail-card');
+  expandableCard('tracks-card');
+  expandableCard('delete-card', null, null, false);
+
+  const grantTracksPicker = trackGrantPicker({
+    expandBtn: 'grant-tracks-btn', section: 'grant-tracks-section',
+    specificBtn: 'grant-specific-btn', allBtn: 'grant-all-btn',
+    checks: 'grant-checks', deselectBtn: 'grant-deselect-btn', expiry: 'grant-expiry',
+    colour: 'var(--add-green)',
+  });
+
+  let logEnabledValue = 1;
+  let isAdminValue     = 0;
+
+  const setLogEnabled = toggleSelector(
+    ['log-enabled-btn', 'log-disabled-btn'], [1, 0], v => { logEnabledValue = v; checkDirty(); }
+  );
+  const setRole = toggleSelector(
+    ['role-participant-btn', 'role-admin-btn'], [0, 1], v => { isAdminValue = v; checkDirty(); }
+  );
+
+  ['detail-name', 'detail-email', 'detail-notes', 'detail-expiry'].forEach(id => {
+    $(id).addEventListener('input', checkDirty);
+  });
+
+  init();
+
+  async function init() {
+    initOptionsMenu();
+
+    const res = await fetch(WORKER + '/admin/user?user_id=' + encodeURIComponent(userId), {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    if (res.status === 401) { location.replace('index.html'); return; }
+    if (res.status === 403) { location.replace('reports.html'); return; }
+
+    const data = await res.json();
+    $('startup-loading').style.display = 'none';
+    $('main-content').style.display    = 'block';
+
+    if (!res.ok || !data.success || !data.user) {
+      $('not-found-msg').style.display = 'block';
+      return;
+    }
+
+    currentUser = data.user;
+    $('user-content').style.display = 'block';
+    renderDetail(currentUser);
+
+    loadUserTracks();
+    grantTracksPicker.load();
+  }
+
+  function renderDetail(u) {
+    $('detail-userid-display').textContent = u.user_id;
+    $('detail-name').value   = u.name  || '';
+    $('detail-email').value  = u.email || '';
+    $('detail-notes').value  = u.notes || '';
+    $('detail-expiry').value = u.expiry_date || '';
+    setLogEnabled(u.log_enabled ? 1 : 0);
+    setRole(u.is_admin ? 1 : 0);
+
+    detailSnapshot = readDetailForm();
+    setDirty(false);
+  }
+
+  function readDetailForm() {
+    return {
+      name:        $('detail-name').value.trim(),
+      email:       $('detail-email').value.trim(),
+      notes:       $('detail-notes').value.trim(),
+      expiry_date: $('detail-expiry').value || null,
+      log_enabled: logEnabledValue,
+      is_admin:    isAdminValue,
+    };
+  }
+
+  function checkDirty() {
+    if (!detailSnapshot) return;
+    const current = readDetailForm();
+    const dirty   = JSON.stringify(current) !== JSON.stringify(detailSnapshot);
+    setDirty(dirty);
+  }
+
+  function setDirty(dirty) {
+    $('save-detail-btn').disabled    = !dirty;
+    $('discard-detail-btn').disabled = !dirty;
+  }
+
+  $('discard-detail-btn').onclick = () => {
+    renderDetail(currentUser);
+    $('detail-msg').textContent = '';
+    $('detail-msg').className   = 'msg';
+  };
+
+  $('save-detail-btn').onclick = async function() {
+    const form = readDetailForm();
+
+    if (!form.name || !form.email) {
+      $('detail-msg').textContent = 'Name and email are required.';
+      $('detail-msg').className   = 'msg err';
+      return;
+    }
+
+    this.disabled = true;
+    $('detail-msg').textContent = 'Saving…';
+    $('detail-msg').className   = 'msg';
+    try {
+      const res  = await fetch(WORKER + '/admin/modify-user', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body:    JSON.stringify({ user_id: currentUser.user_id, ...form }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        $('detail-msg').textContent = data.message || 'Saved.';
+        $('detail-msg').className   = 'msg ok';
+        currentUser     = { ...currentUser, ...form };
+        detailSnapshot  = form;
+        setDirty(false);
+      } else {
+        $('detail-msg').textContent = data.error || 'Failed to save changes.';
+        $('detail-msg').className   = 'msg err';
+        $('save-detail-btn').disabled = false;
+      }
+    } catch {
+      $('detail-msg').textContent = 'Network error.';
+      $('detail-msg').className   = 'msg err';
+      $('save-detail-btn').disabled = false;
+    }
+  };
+
+  // ── Track access ──────────────────────────────────────────────────────
+
+  async function loadUserTracks() {
+    try {
+      const res  = await fetch(WORKER + '/admin/user-tracks?user_id=' + encodeURIComponent(userId), {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      const data = await res.json();
+      grantedTracks = data.tracks || [];
+      renderGrantedTracks();
+    } catch {
+      $('granted-tracks-list').innerHTML = '<p class="msg err">Failed to load track access.</p>';
+    }
+  }
+
+  function renderGrantedTracks() {
+    if (!grantedTracks.length) {
+      $('granted-tracks-list').innerHTML = '<p class="msg">No tracks granted.</p>';
+      return;
+    }
+    $('granted-tracks-list').innerHTML = grantedTracks.map(t => `
+      <div class="track-row" style="margin-bottom:6px">
+        <span class="track-name">${t.track_code} — ${t.title}</span>
+        <span class="track-expiry">${t.expiry_date ? 'Expires ' + t.expiry_date : 'No expiry'}</span>
+        <button data-track-id="${t.id}">Revoke</button>
+      </div>
+    `).join('');
+    $('granted-tracks-list').querySelectorAll('button[data-track-id]').forEach(btn => {
+      btn.onclick = () => revokeTrack(Number(btn.dataset.trackId));
+    });
+  }
+
+  async function revokeTrack(trackId) {
+    try {
+      const res  = await fetch(WORKER + '/admin/grant-tracks', {
+        method:  'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body:    JSON.stringify({ email: currentUser.email, track_id: trackId }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) loadUserTracks();
+      else alert(data.error || 'Failed to revoke track.');
+    } catch {
+      alert('Network error revoking track.');
+    }
+  }
+
+  $('grant-tracks-submit-btn').onclick = async function() {
+    const { trackIds, expiryDate } = grantTracksPicker.getSelection();
+
+    if (trackIds !== 'all' && trackIds.length === 0) {
+      $('grant-tracks-msg').textContent = 'Select at least one track, or choose All tracks.';
+      $('grant-tracks-msg').className   = 'msg err';
+      return;
+    }
+
+    this.disabled = true;
+    $('grant-tracks-msg').textContent = 'Granting…';
+    $('grant-tracks-msg').className   = 'msg';
+    try {
+      const res  = await fetch(WORKER + '/admin/grant-tracks', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body:    JSON.stringify({ email: currentUser.email, track_ids: trackIds, expiry_date: expiryDate }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        $('grant-tracks-msg').textContent = data.message || 'Track access granted.';
+        $('grant-tracks-msg').className   = 'msg ok';
+        grantTracksPicker.reset();
+        loadUserTracks();
+      } else {
+        $('grant-tracks-msg').textContent = data.error || 'Failed to grant track access.';
+        $('grant-tracks-msg').className   = 'msg err';
+      }
+    } catch {
+      $('grant-tracks-msg').textContent = 'Network error.';
+      $('grant-tracks-msg').className   = 'msg err';
+    }
+    this.disabled = false;
+  };
+
+  // ── Delete user ──────────────────────────────────────────────────────
+
+  $('delete-user-btn').onclick = () => {
+    $('delete-confirm-row').style.display = 'flex';
+  };
+  $('delete-cancel-btn').onclick = () => {
+    $('delete-confirm-row').style.display = 'none';
+  };
+  $('delete-confirm-btn').onclick = async function() {
+    this.disabled = true;
+    $('delete-msg').textContent = 'Deleting…';
+    $('delete-msg').className   = 'msg';
+    try {
+      const res  = await fetch(WORKER + '/admin/user', {
+        method:  'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body:    JSON.stringify({ user_id: currentUser.user_id }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        location.href = 'reports.html';
+      } else {
+        $('delete-msg').textContent = data.error || 'Failed to delete user.';
+        $('delete-msg').className   = 'msg err';
+        this.disabled = false;
+      }
+    } catch {
+      $('delete-msg').textContent = 'Network error.';
+      $('delete-msg').className   = 'msg err';
+      this.disabled = false;
+    }
+  };
+</script>
+<script src="ui.js"></script>
+</body>
+</html>
