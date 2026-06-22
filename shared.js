@@ -162,6 +162,52 @@ function trackGrantPicker(ids) {
   return { load, getSelection, hasSelection, reset };
 }
 
+// Reusable "send notification templates" checklist: loads email_templates via
+// GET /admin/templates and lets the caller select zero or more codes to send.
+// ids: { expandBtn, section, checks, category?, colour? } — category filters
+// server-side (e.g. 'general' excludes report templates that need {{report_title}}
+// and don't make sense outside a report-specific flow); omit for all templates.
+function notifyTemplatesPicker(ids) {
+  let allTemplates = [];
+
+  expandableButton(ids.expandBtn, ids.section, ids.colour);
+
+  function renderChecks() {
+    $(ids.checks).innerHTML = allTemplates.map(t =>
+      `<label style="display:flex;align-items:center;gap:8px;font-size:.82rem;padding:6px 10px;border:1px solid var(--border);border-radius:7px;cursor:pointer">
+        <input type="checkbox" class="${ids.checks}-check" value="${t.code}" style="width:auto;margin:0">
+        ${t.subject}
+      </label>`
+    ).join('');
+  }
+
+  async function load() {
+    try {
+      const qs   = ids.category ? '?category=' + encodeURIComponent(ids.category) : '';
+      const res  = await fetch(WORKER + '/admin/templates' + qs, { headers: { Authorization: 'Bearer ' + token } });
+      const data = await res.json();
+      allTemplates = data.templates || [];
+      renderChecks();
+    } catch {
+      $(ids.checks).innerHTML = '<p class="msg err">Failed to load templates.</p>';
+    }
+  }
+
+  function getSelection() {
+    return [...document.querySelectorAll('.' + ids.checks + '-check:checked')].map(c => c.value);
+  }
+
+  function hasSelection() {
+    return document.querySelectorAll('.' + ids.checks + '-check:checked').length > 0;
+  }
+
+  function reset() {
+    document.querySelectorAll('.' + ids.checks + '-check').forEach(c => c.checked = false);
+  }
+
+  return { load, getSelection, hasSelection, reset };
+}
+
 function toggleSelector(btnIds, values, onChange, colour) {
   const c           = colour || 'var(--tertiary)';
   const activeStyle   = `flex:1;padding:8px;border:1.5px solid ${c};border-radius:8px;font-size:.85rem;background:color-mix(in srgb, ${c} 8%, white);cursor:pointer;font-weight:600;color:${c}`;

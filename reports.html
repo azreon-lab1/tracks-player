@@ -153,6 +153,14 @@
             <input id="tracks-expiry" type="date" style="margin:0">
           </div>
 
+          <button id="send-notif-btn" style="width:100%;padding:10px 14px;border:1.5px solid;border-radius:8px;font-size:.88rem;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+            Send Notifications
+            <span class="expand-arrow">▾</span>
+          </button>
+          <div id="send-notif-section" style="display:none;flex-direction:column;gap:6px;margin-top:8px">
+            <div id="notif-checks" style="display:flex;flex-direction:column;gap:6px"></div>
+          </div>
+
           <button class="primary" id="add-user-submit-btn">Add User</button>
           <div id="add-user-msg" class="msg"></div>
         </div>
@@ -376,6 +384,7 @@
       loadAccessSection();
       loadUsers();
       loadAdminTracksList();
+      loadNotificationTemplates();
     }
 
     if (reportParam) openReportByParam(reportParam);
@@ -864,6 +873,14 @@
     $('add-user-submit-btn').textContent = giveTracksPicker.hasSelection() ? 'Add User & Tracks Access' : 'Add User';
   }
 
+  // ── Send Notifications (Add User flow only) ─────────────────────────
+  const sendNotifPicker = notifyTemplatesPicker({
+    expandBtn: 'send-notif-btn', section: 'send-notif-section', checks: 'notif-checks',
+    category: 'general',
+  });
+
+  function loadNotificationTemplates() { return sendNotifPicker.load(); }
+
   async function loadUsers() {
     try {
       const res  = await fetch(WORKER + '/admin/users', {
@@ -943,6 +960,31 @@
           }
         }
 
+        const templateCodes = sendNotifPicker.getSelection();
+
+        if (templateCodes.length > 0) {
+          try {
+            const nRes  = await fetch(WORKER + '/admin/send-templates', {
+              method:  'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+              body:    JSON.stringify({ email, name, template_codes: templateCodes }),
+            });
+            const nData = await nRes.json();
+            if (nRes.ok && nData.success) {
+              const sent   = nData.results.filter(r => r.success).length;
+              const failed = nData.results.filter(r => !r.success);
+              message += ` ${sent} notification(s) sent.`;
+              if (failed.length) {
+                message += ' Failed: ' + failed.map(f => `${f.code} (${f.error})`).join(', ') + '.';
+              }
+            } else {
+              message += ' Notifications failed to send.';
+            }
+          } catch {
+            message += ' Notifications failed (network error).';
+          }
+        }
+
         $('add-user-msg').textContent = message;
         $('add-user-msg').className   = 'msg ok';
         $('add-user-userid').value = '';
@@ -951,6 +993,7 @@
         $('add-user-notes').value  = '';
         $('add-user-expiry').value = '';
         giveTracksPicker.reset();
+        sendNotifPicker.reset();
         updateAddUserBtnText();
         loadUsers();
       } else {
