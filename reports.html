@@ -165,6 +165,21 @@
           <div id="add-user-msg" class="msg"></div>
         </div>
       </div>
+
+      <div style="margin-top:16px;border-top:1px solid #f0f0f0;padding-top:12px">
+        <button id="resend-notif-btn" style="width:100%;padding:10px 14px;border:1.5px solid;border-radius:8px;font-size:.88rem;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between">
+          Resend Notifications
+          <span class="expand-arrow">▾</span>
+        </button>
+        <div id="resend-notif-section" style="display:none;flex-direction:column;gap:8px;margin-top:12px">
+          <select id="resend-notif-recipient" style="width:100%;padding:10px;border:1px solid var(--tertiary);border-radius:8px;font-size:.9rem;color:#333">
+            <option value="">Select recipient…</option>
+          </select>
+          <div id="resend-notif-checks" style="display:flex;flex-direction:column;gap:6px"></div>
+          <button class="secondary" id="resend-notif-send-btn" disabled>Send Notifications</button>
+          <div id="resend-notif-msg" class="msg"></div>
+        </div>
+      </div>
     </div>
 
     <div class="card" id="upload-card" style="display:none">
@@ -385,6 +400,7 @@
       loadUsers();
       loadAdminTracksList();
       loadNotificationTemplates();
+      loadResendNotifTemplates();
     }
 
     if (reportParam) openReportByParam(reportParam);
@@ -889,10 +905,73 @@
       const data = await res.json();
       allUsersList = data.users || [];
       renderUsers(allUsersList);
+      populateResendNotifRecipientSelect();
     } catch {
       $('users-list').innerHTML = '<p class="msg err">Failed to load users.</p>';
     }
   }
+
+  // ── Resend Notifications (any existing user) ────────────────────────
+  expandableButton('resend-notif-btn', 'resend-notif-section');
+  const resendNotifPicker = notifyTemplatesPicker({ checks: 'resend-notif-checks', category: 'general' });
+
+  function loadResendNotifTemplates() { return resendNotifPicker.load(); }
+
+  function populateResendNotifRecipientSelect() {
+    const sel = $('resend-notif-recipient');
+    while (sel.options.length > 1) sel.remove(1);
+    allUsersList.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value       = u.email;
+      opt.textContent = `${u.user_id} — ${u.name} (${u.email})`;
+      sel.appendChild(opt);
+    });
+  }
+
+  function syncResendNotifBtn() {
+    const hasRecipient = !!$('resend-notif-recipient').value;
+    $('resend-notif-send-btn').disabled = !hasRecipient || !resendNotifPicker.hasSelection();
+  }
+
+  $('resend-notif-recipient').addEventListener('change', syncResendNotifBtn);
+  $('resend-notif-checks').addEventListener('change', syncResendNotifBtn);
+
+  $('resend-notif-send-btn').onclick = async function() {
+    const email = $('resend-notif-recipient').value;
+    const codes = resendNotifPicker.getSelection();
+    if (!email || codes.length === 0) return;
+    const user = allUsersList.find(u => u.email === email);
+    const name = (user && user.name) || 'there';
+
+    this.disabled = true;
+    $('resend-notif-msg').textContent = 'Sending…';
+    $('resend-notif-msg').className   = 'msg';
+    try {
+      const res  = await fetch(WORKER + '/admin/send-templates', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body:    JSON.stringify({ email, name, template_codes: codes }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        const sent   = data.results.filter(r => r.success).length;
+        const failed = data.results.filter(r => !r.success);
+        let msg = `${sent} notification(s) sent.`;
+        if (failed.length) msg += ' Failed: ' + failed.map(f => `${f.code} (${f.error})`).join(', ') + '.';
+        $('resend-notif-msg').textContent = msg;
+        $('resend-notif-msg').className   = 'msg ok';
+        $('resend-notif-recipient').value = '';
+        resendNotifPicker.reset();
+      } else {
+        $('resend-notif-msg').textContent = data.error || 'Failed to send.';
+        $('resend-notif-msg').className   = 'msg err';
+      }
+    } catch {
+      $('resend-notif-msg').textContent = 'Network error. Try again.';
+      $('resend-notif-msg').className   = 'msg err';
+    }
+    syncResendNotifBtn();
+  };
 
   function renderUsers(users) {
     const sorted = [...users].sort((a, b) => {

@@ -164,13 +164,17 @@ function trackGrantPicker(ids) {
 
 // Reusable "send notification templates" checklist: loads email_templates via
 // GET /admin/templates and lets the caller select zero or more codes to send.
-// ids: { expandBtn, section, checks, category?, colour? } — category filters
-// server-side (e.g. 'general' excludes report templates that need {{report_title}}
-// and don't make sense outside a report-specific flow); omit for all templates.
+// ids: { expandBtn?, section?, checks, category?, colour? } — expandBtn/section
+// are optional (omit when the checklist is already inside its own expandable
+// and doesn't need a further nested toggle). category filters server-side
+// (e.g. 'general' excludes report templates that need {{report_title}} and
+// don't make sense outside a report-specific flow); omit for all templates.
 function notifyTemplatesPicker(ids) {
   let allTemplates = [];
 
-  expandableButton(ids.expandBtn, ids.section, ids.colour);
+  if (ids.expandBtn && ids.section) {
+    expandableButton(ids.expandBtn, ids.section, ids.colour);
+  }
 
   function renderChecks() {
     $(ids.checks).innerHTML = allTemplates.map(t =>
