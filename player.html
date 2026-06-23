@@ -491,7 +491,9 @@
   $('progress-wrap').addEventListener('click', function(e) {
     if (!audio.duration) return;
     const rect = this.getBoundingClientRect();
+    const fromPositionMs = Math.round((audio.currentTime || 0) * 1000);
     audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
+    logEvent('seek', { fromPositionMs });
   });
 
   function handleTrackEnd() {
@@ -692,7 +694,7 @@
     if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
   }
 
-  function logEvent(type) {
+  function logEvent(type, extra = {}) {
     if (!currentTrack || !token) return;
     fetch(WORKER + '/log', {
       method: 'POST',
@@ -706,6 +708,7 @@
         positionMs: Math.round((audio.currentTime || 0) * 1000),
         durationMs: isFinite(audio.duration) ? Math.round(audio.duration * 1000) : null,
         sessionId,
+        ...extra,
       }),
     });
   }
