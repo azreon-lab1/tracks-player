@@ -215,6 +215,7 @@
   let heartbeatTimer  = null;
   const HEARTBEAT_MS  = 30000;
   let LOG_HEARTBEAT   = true;
+  const WATCHDOG_INTERVAL_MS = 5000; // stall-detection cadence — was 15000, reduced for faster recovery
 
   let pendingTrackCode = new URLSearchParams(location.search).get('track');
 
@@ -572,7 +573,12 @@
     clearInterval(watchdogTimer);
     lastPosition = audio.currentTime;
     watchdogTimer = setInterval(() => {
-      if (document.visibilityState === 'hidden' || audio.ended) {
+      // Stall detection runs regardless of visibility — background playback
+      // is supported and expected to keep advancing, so a frozen position
+      // while hidden is a real stall, not a false positive. Previously this
+      // skipped entirely while hidden, which let stalls go undetected and
+      // unrecovered for as long as the screen stayed locked.
+      if (audio.ended) {
         lastPosition = audio.currentTime; return;
       }
       if (!audio.paused && audio.currentTime === lastPosition && currentTrack) {
@@ -587,7 +593,7 @@
         }).catch(() => setLoading(false));
       }
       lastPosition = audio.currentTime;
-    }, 15000);
+    }, WATCHDOG_INTERVAL_MS);
   }
 
   function stopWatchdog() { clearInterval(watchdogTimer); watchdogTimer = null; }
@@ -599,7 +605,12 @@
     } else {
       logEvent('foreground');
       lastPosition = audio.currentTime;
-      if (!audio.paused) resetWatchdog();
+      // Always reset (not gated on !audio.paused) — the watchdog now runs
+      // continuously regardless of visibility, but a fresh baseline here
+      // also covers the case where the browser auto-paused playback due to
+      // an error while backgrounded; the interval's own !audio.paused check
+      // simply no-ops if genuinely paused.
+      resetWatchdog();
       acquireWakeLock();
     }
   });
