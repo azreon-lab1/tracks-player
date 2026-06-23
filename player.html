@@ -537,12 +537,31 @@
     stopWatchdog();
     releaseWakeLock();
   });
+  // Diagnostic snapshot attached to every 'error' log so a stall/error is
+  // actually explainable afterwards instead of just "error happened here".
+  // Bundled as one JSON string (errorDetail) rather than several flat
+  // fields, since this is only ever populated for event_type='error' rows.
+  function errorDiagnostics(label) {
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    return {
+      errorDetail: JSON.stringify({
+        trigger:         label,
+        mediaErrorCode:  audio.error ? audio.error.code : null,
+        mediaErrorMsg:   audio.error ? (audio.error.message || null) : null,
+        networkState:    audio.networkState,
+        readyState:      audio.readyState,
+        connectionType:  conn ? (conn.effectiveType || null) : null,
+        connectionRttMs: conn ? (conn.rtt ?? null) : null,
+      }),
+    };
+  }
+
   audio.addEventListener('waiting', () => { if (!audio.ended) setLoading(true); });
   audio.addEventListener('playing', () => setLoading(false));
   audio.addEventListener('stalled', () => {
     if (audio.ended) return;
     setLoading(true);
-    logEvent('error');
+    logEvent('error', errorDiagnostics('stalled'));
   });
 
   // ── Watchdog ──────────────────────────────────────────────────────────
@@ -558,7 +577,7 @@
       }
       if (!audio.paused && audio.currentTime === lastPosition && currentTrack) {
         console.log('Watchdog: stall detected at', audio.currentTime);
-        setLoading(true); showPause(false); logEvent('error');
+        setLoading(true); showPause(false); logEvent('error', errorDiagnostics('watchdog_stall'));
         stopHeartbeat(); clearInterval(watchdogTimer);
         const pos = audio.currentTime;
         audio.src = `${WORKER}/audio/${currentTrack.r2_key}?t=${encodeURIComponent(token)}`;
