@@ -55,6 +55,8 @@
     #discard-detail-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--tertiary) 75%, #000); }
     #discard-detail-btn:disabled { opacity: .5; cursor: not-allowed; }
     .field-label { font-size: .78rem; color: var(--text-muted); margin: 4px 0 0; }
+    #finish-protocol-btn { cursor: pointer; }
+    #finish-protocol-btn:disabled { opacity: .5; cursor: not-allowed; }
     .track-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 7px; font-size: .85rem; }
     .track-row .track-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .track-row .track-expiry { color: var(--muted); font-size: .76rem; white-space: nowrap; }
@@ -136,6 +138,12 @@
           <div style="display:flex;gap:8px">
             <button id="role-participant-btn" style="flex:1">Participant</button>
             <button id="role-admin-btn" style="flex:1">Admin</button>
+          </div>
+
+          <p class="field-label">Current protocol (optional)</p>
+          <div style="display:flex;gap:8px">
+            <input id="detail-protocol" type="text" placeholder="e.g. L10, EESARA" style="margin:0;flex:1">
+            <button id="finish-protocol-btn" style="flex:1;background:var(--warning);color:var(--warning-text);border:none;border-radius:8px;font-size:1rem;padding:14px" disabled>Finish Protocol</button>
           </div>
 
           <div style="display:flex;gap:8px;margin-top:8px">
@@ -238,6 +246,10 @@
   ['detail-name', 'detail-email', 'detail-notes', 'detail-expiry'].forEach(id => {
     $(id).addEventListener('input', checkDirty);
   });
+  $('detail-protocol').addEventListener('input', () => {
+    checkDirty();
+    $('finish-protocol-btn').disabled = !$('detail-protocol').value.trim();
+  });
 
   init();
 
@@ -273,6 +285,8 @@
     $('detail-email').value  = u.email || '';
     $('detail-notes').value  = u.notes || '';
     $('detail-expiry').value = u.expiry_date || '';
+    $('detail-protocol').value = u.current_protocol || '';
+    $('finish-protocol-btn').disabled = !u.current_protocol;
     setLogEnabled(u.log_enabled ? 1 : 0);
     setRole(u.is_admin ? 1 : 0);
 
@@ -282,12 +296,13 @@
 
   function readDetailForm() {
     return {
-      name:        $('detail-name').value.trim(),
-      email:       $('detail-email').value.trim(),
-      notes:       $('detail-notes').value.trim(),
-      expiry_date: $('detail-expiry').value || null,
-      log_enabled: logEnabledValue,
-      is_admin:    isAdminValue,
+      name:             $('detail-name').value.trim(),
+      email:            $('detail-email').value.trim(),
+      notes:            $('detail-notes').value.trim(),
+      expiry_date:      $('detail-expiry').value || null,
+      log_enabled:      logEnabledValue,
+      is_admin:         isAdminValue,
+      current_protocol: $('detail-protocol').value.trim() || null,
     };
   }
 
@@ -328,21 +343,67 @@
         body:    JSON.stringify({ user_id: currentUser.user_id, ...form }),
       });
       const data = await res.json();
-      if (res.ok && data.success) {
-        $('detail-msg').textContent = data.message || 'Saved.';
-        $('detail-msg').className   = 'msg ok';
-        currentUser     = { ...currentUser, ...form };
-        detailSnapshot  = form;
-        setDirty(false);
-      } else {
+      if (!res.ok || !data.success) {
         $('detail-msg').textContent = data.error || 'Failed to save changes.';
         $('detail-msg').className   = 'msg err';
         $('save-detail-btn').disabled = false;
+        return;
       }
+
+      if (form.current_protocol !== detailSnapshot.current_protocol) {
+        const protoRes  = await fetch(WORKER + '/admin/set-protocol', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+          body:    JSON.stringify({ user_id: currentUser.user_id, protocol_code: form.current_protocol }),
+        });
+        const protoData = await protoRes.json();
+        if (!protoRes.ok || !protoData.success) {
+          $('detail-msg').textContent = protoData.error || 'Saved, but failed to update protocol.';
+          $('detail-msg').className   = 'msg err';
+          $('save-detail-btn').disabled = false;
+          return;
+        }
+      }
+
+      $('detail-msg').textContent = data.message || 'Saved.';
+      $('detail-msg').className   = 'msg ok';
+      currentUser     = { ...currentUser, ...form };
+      detailSnapshot  = form;
+      setDirty(false);
     } catch {
       $('detail-msg').textContent = 'Network error.';
       $('detail-msg').className   = 'msg err';
       $('save-detail-btn').disabled = false;
+    }
+  };
+
+  $('finish-protocol-btn').onclick = async function() {
+    this.disabled = true;
+    $('detail-msg').textContent = 'Finishing protocol…';
+    $('detail-msg').className   = 'msg';
+    try {
+      const res  = await fetch(WORKER + '/admin/set-protocol', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body:    JSON.stringify({ user_id: currentUser.user_id, protocol_code: null }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        $('detail-msg').textContent = data.message || 'Protocol finished.';
+        $('detail-msg').className   = 'msg ok';
+        $('detail-protocol').value  = '';
+        currentUser     = { ...currentUser, current_protocol: null };
+        detailSnapshot  = { ...detailSnapshot, current_protocol: null };
+        setDirty(false);
+      } else {
+        $('detail-msg').textContent = data.error || 'Failed to finish protocol.';
+        $('detail-msg').className   = 'msg err';
+        this.disabled = false;
+      }
+    } catch {
+      $('detail-msg').textContent = 'Network error.';
+      $('detail-msg').className   = 'msg err';
+      this.disabled = false;
     }
   };
 
