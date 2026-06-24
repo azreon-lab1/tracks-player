@@ -206,11 +206,33 @@
     location.replace(_tp ? 'index.html?track=' + encodeURIComponent(_tp) : 'index.html');
   }
 
+  // Internal player state — exactly one value at a time, the single source
+  // of truth for "what is the player doing right now, mechanically". Event
+  // logging and recovery logic check THIS, not independent ad-hoc flags, so
+  // it's never ambiguous whether a given pause/play/start/end reflects real
+  // user/browser activity or one of our own internal procedures.
+  //   NORMAL          — ordinary playback; pause/play/start/end are real.
+  //   SWITCHING_BLOB  — hybrid-mode stream->blob handoff in progress;
+  //                      suppresses spurious start/end from the src swap.
+  //   RECONNECTING    — watchdog-triggered recovery in progress; suppresses
+  //                      the pause/play the forced reload inherently fires
+  //                      from being logged as a real user pause/resume.
+  const PlayerState = { NORMAL: 'normal', SWITCHING_BLOB: 'switching-blob', RECONNECTING: 'reconnecting' };
+  let internalState = PlayerState.NORMAL;
+
+  // Set immediately before every call WE make to fadePlay()/fadePause() (the
+  // only two functions that ever call audio.play()/audio.pause() outside the
+  // already-tracked blob-switch/reconnect paths), naming which of our own
+  // surfaces triggered it ('button' | 'media_session' | 'autoplay'). Read
+  // once by the next native play/pause event, then cleared. If a play/pause
+  // event fires with this still null, nothing we did caused it — the browser
+  // or OS paused/resumed the audio element on its own.
+  let pendingPlaybackTrigger = null;
+
   let currentTrack    = null;
   let sessionId       = newSessionId();
   let wasPlaying      = false;
   let hasPaused       = false;
-  let isSwitchingBlob = false;
   let hasStartedPlaying = false;
   let heartbeatTimer  = null;
   const HEARTBEAT_MS  = 30000;
@@ -306,7 +328,7 @@
     document.querySelectorAll('.track-item').forEach(d => d.classList.remove('active'));
     if (el) el.classList.add('active');
 
-    if (currentTrack && wasPlaying) logEvent('stop');
+    if (currentTrack && wasPlaying) logEvent('stop', eventDiagnostics({ trigger: 'track_switch' }));
     wasPlaying = false;
 
     audio.muted = true;
@@ -317,7 +339,7 @@
     currentTrack      = track;
     sessionId         = newSessionId();
     hasPaused         = false;
-    isSwitchingBlob   = false;
+    internalState     = PlayerState.NORMAL;
     hasStartedPlaying = false;
     stopHeartbeat();
     stopWatchdog();
@@ -371,9 +393,9 @@
       navigator.mediaSession.metadata = new MediaMetadata({
         title: track.title, artist: UI.PLATFORM_ARTIST, album: '',
       });
-      navigator.mediaSession.setActionHandler('play',  () => { if (audio.paused)  fadePlay(); });
-      navigator.mediaSession.setActionHandler('pause', () => { if (!audio.paused) fadePause(); });
-      navigator.mediaSession.setActionHandler('stop',  () => { if (!audio.paused) fadePause(); });
+      navigator.mediaSession.setActionHandler('play',  () => { if (audio.paused)  fadePlay('media_session'); });
+      navigator.mediaSession.setActionHandler('pause', () => { if (!audio.paused) fadePause('media_session'); });
+      navigator.mediaSession.setActionHandler('stop',  () => { if (!audio.paused) fadePause('media_session'); });
     }
   }
 
@@ -385,7 +407,7 @@
       hasStartedPlaying = true;
       document.querySelectorAll('.track-item').forEach(d => d.style.pointerEvents = '');
       audio.muted = false;
-      fadePlay();
+      fadePlay('autoplay');
     }, { once: true });
 
     audio.addEventListener('error', function onErr() {
@@ -410,14 +432,14 @@
         currentBlobUrl = URL.createObjectURL(blob);
         const pos     = audio.currentTime;
         const playing = !audio.paused;
-        isSwitchingBlob = true;
+        internalState = PlayerState.SWITCHING_BLOB;
         audio.src = currentBlobUrl;
         audio.addEventListener('canplay', function onBlobReady() {
           audio.removeEventListener('canplay', onBlobReady);
           if (!currentTrack || audio.ended) return;
           audio.currentTime = pos;
           if (playing) audio.play().catch(() => {});
-          setTimeout(() => { isSwitchingBlob = false; }, 500);
+          setTimeout(() => { internalState = PlayerState.NORMAL; }, 500);
         }, { once: true });
       })
       .catch(err => {
@@ -432,7 +454,8 @@
   let fadeTimer  = null;
   let userVolume = 1;
 
-  function fadePlay() {
+  function fadePlay(source = 'button') {
+    pendingPlaybackTrigger = source;
     if (!FADE_AUDIO_ACTIONS) { audio.play().catch(() => {}); return; }
     if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
     audio.volume = 0;
@@ -446,7 +469,8 @@
     }).catch(() => { audio.volume = userVolume; });
   }
 
-  function fadePause() {
+  function fadePause(source = 'button') {
+    pendingPlaybackTrigger = source;
     if (!FADE_AUDIO_ACTIONS) { audio.pause(); return; }
     if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
     const start = audio.volume || userVolume;
@@ -494,13 +518,13 @@
     const rect = this.getBoundingClientRect();
     const fromPositionMs = Math.round((audio.currentTime || 0) * 1000);
     audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
-    logEvent('seek', { fromPositionMs });
+    logEvent('seek', { fromPositionMs, ...eventDiagnostics({ trigger: 'progress_bar_click' }) });
   });
 
   function handleTrackEnd() {
     if (!wasPlaying) return;
     wasPlaying = false;
-    logEvent('end');
+    logEvent('end', eventDiagnostics({ trigger: audio.ended ? 'native_ended' : 'timeupdate_threshold' }));
     showPause(false);
     stopHeartbeat();
     stopWatchdog();
@@ -513,16 +537,29 @@
 
   audio.addEventListener('play', () => {
     showPause(true);
-    if (isSwitchingBlob) return;
-    if (!wasPlaying) { logEvent('start'); wasPlaying = true; }
-    else if (hasPaused) { logEvent('resume'); hasPaused = false; }
+    // pendingPlaybackTrigger is set by fadePlay() immediately before it calls
+    // audio.play() — if it's still null here, nothing we did caused this
+    // native 'play', meaning the browser/OS resumed playback on its own.
+    const triggeredBy = pendingPlaybackTrigger || 'external';
+    pendingPlaybackTrigger = null;
+    if (internalState === PlayerState.SWITCHING_BLOB) return;
+    if (internalState !== PlayerState.RECONNECTING) {
+      if (!wasPlaying) { logEvent('start', eventDiagnostics({ trigger: triggeredBy })); wasPlaying = true; }
+      else if (hasPaused) { logEvent('resume', eventDiagnostics({ trigger: triggeredBy })); hasPaused = false; }
+    }
     startHeartbeat();
     resetWatchdog();
     acquireWakeLock();
   });
 
   audio.addEventListener('timeupdate', () => {
-    if (wasPlaying && !isSwitchingBlob && isFinite(audio.duration) && audio.duration > 0
+    // timeupdate only fires while time is genuinely advancing — a reliable
+    // sign playback isn't actually stuck, even if a spurious 'stalled' event
+    // (seen on Safari without readyState ever dropping) left the loading
+    // indicator on with nothing left to clear it (it's only ever cleared by
+    // 'playing', which doesn't fire again if Safari never paused anything).
+    if (!audio.paused) setLoading(false);
+    if (wasPlaying && internalState !== PlayerState.SWITCHING_BLOB && isFinite(audio.duration) && audio.duration > 0
         && audio.currentTime >= audio.duration - 0.25) {
       handleTrackEnd();
     }
@@ -532,46 +569,75 @@
 
   audio.addEventListener('pause', () => {
     showPause(false);
+    // Same logic as 'play' above — read+clear unconditionally, at the top,
+    // so a stale value never bleeds into a later, unrelated pause/play.
+    const triggeredBy = pendingPlaybackTrigger || 'external';
+    pendingPlaybackTrigger = null;
     if (!wasPlaying) return;
-    if (!audio.ended) { logEvent('pause'); hasPaused = true; }
+    if (!audio.ended && internalState !== PlayerState.RECONNECTING) {
+      logEvent('pause', eventDiagnostics({ trigger: triggeredBy }));
+      hasPaused = true;
+    }
     stopHeartbeat();
     stopWatchdog();
     releaseWakeLock();
   });
-  // Diagnostic snapshot attached to every 'error' log so a stall/error is
-  // actually explainable afterwards instead of just "error happened here".
-  // Bundled as one JSON string (errorDetail) rather than several flat
-  // fields, since this is only ever populated for event_type='error' rows.
-  function errorDiagnostics(label) {
+  // Diagnostic snapshot attachable to ANY logEvent call (not just errors) —
+  // "eventDetail" so a session can be reconstructed from the logs alone
+  // afterwards, instead of needing to guess from position/timestamp alone.
+  // extra is merged in last so a call site can override/add fields
+  // (e.g. { trigger: 'media_session', triggeredBy: 'user' }).
+  function eventDiagnostics(extra = {}) {
     const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     return {
-      errorDetail: JSON.stringify({
-        trigger:         label,
+      eventDetail: JSON.stringify({
         mediaErrorCode:  audio.error ? audio.error.code : null,
         mediaErrorMsg:   audio.error ? (audio.error.message || null) : null,
         networkState:    audio.networkState,
         readyState:      audio.readyState,
         connectionType:  conn ? (conn.effectiveType || null) : null,
         connectionRttMs: conn ? (conn.rtt ?? null) : null,
+        visibilityState: document.visibilityState,
+        ...extra,
       }),
     };
   }
 
   audio.addEventListener('waiting', () => { if (!audio.ended) setLoading(true); });
   audio.addEventListener('playing', () => setLoading(false));
+  // 'stalled' is purely advisory in the spec — browsers (Safari especially)
+  // fire it whenever a fetch attempt pauses even briefly, including during
+  // benign ahead-of-playback buffering bursts where data keeps arriving just
+  // fine. It is NOT proof anything is actually wrong, so it must never be the
+  // thing that decides whether to log a real 'error' — only the watchdog's
+  // buffered-growth check below (a fact, not an advisory event) decides that.
+  // This listener only drives the cosmetic loading indicator.
   audio.addEventListener('stalled', () => {
     if (audio.ended) return;
     setLoading(true);
-    logEvent('error', errorDiagnostics('stalled'));
   });
 
   // ── Watchdog ──────────────────────────────────────────────────────────
+  // A stall is only declared when BOTH playback position AND the buffered
+  // range are frozen — bufferedEnd() is the same audio.buffered fact that
+  // drives the buffer bar, so "is the browser still receiving data" is a
+  // checkable fact, not an assumption. This is what actually distinguishes
+  // Safari's ahead-of-playback buffering bursts (buffered keeps growing even
+  // while currentTime briefly looks static) from a genuine stall (nothing
+  // moving at all) — and it works the same way on every browser, since it's
+  // standard Media Element state, not an engine-specific advisory event.
   let watchdogTimer = null;
-  let lastPosition  = 0;
+  let lastPosition    = 0;
+  let lastBufferedEnd = 0;
+
+  function bufferedEnd() {
+    return audio.buffered.length ? audio.buffered.end(audio.buffered.length - 1) : 0;
+  }
 
   function resetWatchdog() {
     clearInterval(watchdogTimer);
-    lastPosition = audio.currentTime;
+    lastPosition    = audio.currentTime;
+    lastBufferedEnd = bufferedEnd();
     watchdogTimer = setInterval(() => {
       // Stall detection runs regardless of visibility — background playback
       // is supported and expected to keep advancing, so a frozen position
@@ -579,20 +645,33 @@
       // skipped entirely while hidden, which let stalls go undetected and
       // unrecovered for as long as the screen stayed locked.
       if (audio.ended) {
-        lastPosition = audio.currentTime; return;
+        lastPosition = audio.currentTime; lastBufferedEnd = bufferedEnd(); return;
       }
-      if (!audio.paused && audio.currentTime === lastPosition && currentTrack) {
+      const bufEnd = bufferedEnd();
+      const isStalled = !audio.paused && currentTrack
+        && audio.currentTime === lastPosition
+        && bufEnd === lastBufferedEnd;
+      if (isStalled) {
         console.log('Watchdog: stall detected at', audio.currentTime);
-        setLoading(true); showPause(false); logEvent('error', errorDiagnostics('watchdog_stall'));
+        setLoading(true); showPause(false); logEvent('error', eventDiagnostics({ trigger: 'watchdog_stall' }));
         stopHeartbeat(); clearInterval(watchdogTimer);
         const pos = audio.currentTime;
+        // A forced reload inherently fires native pause/play on the audio
+        // element — that's not the user pausing/resuming, it's an automatic
+        // recovery, and logging it as pause/resume would be a false signal
+        // in the compliance data (and could spuriously satisfy LENIENT's
+        // quick-pause tolerance). The 'error' above is the truthful record
+        // of what happened here; PlayerState.RECONNECTING suppresses the rest.
+        internalState = PlayerState.RECONNECTING;
         audio.src = `${WORKER}/audio/${currentTrack.r2_key}?t=${encodeURIComponent(token)}`;
         audio.load(); audio.currentTime = pos;
         audio.play().then(() => {
+          internalState = PlayerState.NORMAL;
           setLoading(false); showPause(true); startHeartbeat(); resetWatchdog();
-        }).catch(() => setLoading(false));
+        }).catch(() => { internalState = PlayerState.NORMAL; setLoading(false); });
       }
-      lastPosition = audio.currentTime;
+      lastPosition    = audio.currentTime;
+      lastBufferedEnd = bufEnd;
     }, WATCHDOG_INTERVAL_MS);
   }
 
@@ -601,9 +680,9 @@
   document.addEventListener('visibilitychange', () => {
     if (!currentTrack || audio.ended) return;
     if (document.visibilityState === 'hidden') {
-      logEvent('background');
+      logEvent('background', eventDiagnostics());
     } else {
-      logEvent('foreground');
+      logEvent('foreground', eventDiagnostics());
       lastPosition = audio.currentTime;
       // Always reset (not gated on !audio.paused) — the watchdog now runs
       // continuously regardless of visibility, but a fresh baseline here
@@ -718,7 +797,7 @@
 
   function startHeartbeat() {
     stopHeartbeat();
-    heartbeatTimer = setInterval(() => { if (LOG_HEARTBEAT) logEvent('heartbeat'); }, HEARTBEAT_MS);
+    heartbeatTimer = setInterval(() => { if (LOG_HEARTBEAT) logEvent('heartbeat', eventDiagnostics()); }, HEARTBEAT_MS);
   }
   function stopHeartbeat() {
     if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
