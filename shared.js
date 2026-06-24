@@ -212,6 +212,84 @@ function notifyTemplatesPicker(ids) {
   return { load, getSelection, hasSelection, reset };
 }
 
+// Reusable "compliance logs" viewer: tier toggle (strict/lenient/resumed) +
+// optional date range + run button, calls GET /admin/logs and renders one row
+// per qualifying session (track + start/end time). Used by both reports.html
+// (admin picks any participant via getUserId) and manage-user.html (user is
+// already fixed — getUserId just returns that page's currentUser.user_id).
+// ids: { tierBtns: [strictId, lenientId, resumedId], from, to, runBtn, out,
+//        getUserId: () => string|null, colour? }
+// Each row shows the user_id only when no specific user is selected for that
+// run (getUserId() returned null/empty) — if a user is fixed or chosen, it's
+// already shown elsewhere in the UI and would just be redundant noise.
+function complianceLogsViewer(ids) {
+  let tier = 'strict';
+  const setTier = toggleSelector(ids.tierBtns, ['strict', 'lenient', 'resumed'], v => tier = v, ids.colour);
+  setTier('strict');
+
+  function fmt(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' +
+           d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function render(tracks, showUser) {
+    const out = $(ids.out);
+    if (!tracks.length) {
+      out.innerHTML = '<p class="msg">No completed tracks found for this selection.</p>';
+      return;
+    }
+    out.innerHTML = tracks.map(t => `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:.85rem;margin-bottom:6px">
+        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${showUser ? (t.user_id + ' — ') : ''}${t.track_code} — ${t.track_title}</span>
+        <span style="color:var(--muted);font-size:.76rem;white-space:nowrap">${fmt(t.start_time)} → ${fmt(t.end_time)}</span>
+      </div>
+    `).join('');
+  }
+
+  async function run() {
+    const out    = $(ids.out);
+    const userId = ids.getUserId ? ids.getUserId() : null;
+    let   from   = $(ids.from).value;
+    let   to     = $(ids.to).value;
+
+    // A single filled date (either side) means "just that one day" —
+    // not "open-ended", which would otherwise silently return all time.
+    if (from && !to) to = from;
+    else if (to && !from) from = to;
+
+    out.innerHTML = '<p class="msg">Loading…</p>';
+    let url = WORKER + '/admin/logs?type=' + tier;
+    if (userId)     url += '&user_id=' + encodeURIComponent(userId);
+    if (from && to) url += '&from=' + from + '&to=' + to;
+
+    try {
+      const res  = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+      const data = await res.json();
+      if (!data.success) {
+        out.innerHTML = '<p class="msg err">' + (data.error || 'Failed to load logs.') + '</p>';
+        return;
+      }
+      render(data.tracks, !userId);
+    } catch {
+      out.innerHTML = '<p class="msg err">Network error.</p>';
+    }
+  }
+
+  function setQuickRange(days) {
+    const to   = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - days + 1);
+    $(ids.from).value = from.toISOString().slice(0, 10);
+    $(ids.to).value   = to.toISOString().slice(0, 10);
+  }
+
+  $(ids.runBtn).onclick = run;
+
+  return { run, setQuickRange };
+}
+
 function toggleSelector(btnIds, values, onChange, colour) {
   const c           = colour || 'var(--tertiary)';
   const activeStyle   = `flex:1;padding:8px;border:1.5px solid ${c};border-radius:8px;font-size:.85rem;background:color-mix(in srgb, ${c} 8%, white);cursor:pointer;font-weight:600;color:${c}`;

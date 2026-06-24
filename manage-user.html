@@ -55,6 +55,8 @@
     #discard-detail-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--tertiary) 75%, #000); }
     #discard-detail-btn:disabled { opacity: .5; cursor: not-allowed; }
     .field-label { font-size: .78rem; color: var(--text-muted); margin: 4px 0 0; }
+    .quick-range-btn { flex: 1; padding: 8px; border: 1.5px solid #7fb8db; border-radius: 8px; font-size: .85rem; background: #eaf4fb; color: #1d5d82; cursor: pointer; }
+    .quick-range-btn:hover { background: #d8ecf8; }
     #finish-protocol-btn { cursor: pointer; }
     #finish-protocol-btn:disabled { opacity: .5; cursor: not-allowed; }
     .track-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 7px; font-size: .85rem; }
@@ -179,6 +181,35 @@
         </div>
       </div>
 
+      <div class="card" id="logs-card">
+        <h2>Listening Logs</h2>
+        <p class="field-label" style="margin:0 0 8px">Participant ID: <strong id="logs-participant-id" style="color:#333">—</strong></p>
+        <p class="field-label" style="margin:0 0 4px">Tier</p>
+        <div style="display:flex;gap:8px">
+          <button id="logs-strict-btn"  style="flex:1">Strict</button>
+          <button id="logs-lenient-btn" style="flex:1">Lenient</button>
+          <button id="logs-resumed-btn" style="flex:1">Resumed</button>
+        </div>
+        <p class="field-label" style="margin:10px 0 4px">Quick range</p>
+        <div style="display:flex;gap:8px">
+          <button class="quick-range-btn" id="logs-7d-btn">Last 7 days</button>
+          <button class="quick-range-btn" id="logs-30d-btn">Last 30 days</button>
+          <button class="quick-range-btn" id="logs-all-btn">All time</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <div style="flex:1">
+            <p class="field-label" style="margin:0 0 4px">From</p>
+            <input id="logs-from" type="date" style="margin:0">
+          </div>
+          <div style="flex:1">
+            <p class="field-label" style="margin:0 0 4px">To</p>
+            <input id="logs-to" type="date" style="margin:0">
+          </div>
+        </div>
+        <button class="secondary" id="logs-run-btn" style="margin-top:10px">Run</button>
+        <div id="logs-out" style="margin-top:10px"><p class="msg">Pick a tier and range, then Run.</p></div>
+      </div>
+
       <div class="card" id="delete-card">
         <h2>Delete User</h2>
         <div id="delete-user-section">
@@ -224,6 +255,7 @@
 
   expandableCard('detail-card');
   expandableCard('tracks-card');
+  expandableCard('logs-card');
   expandableCard('delete-card', null, null, false);
 
   const grantTracksPicker = trackGrantPicker({
@@ -232,6 +264,15 @@
     checks: 'grant-checks', deselectBtn: 'grant-deselect-btn', expiry: 'grant-expiry',
     colour: 'var(--add-green)',
   });
+
+  const logsViewer = complianceLogsViewer({
+    tierBtns: ['logs-strict-btn', 'logs-lenient-btn', 'logs-resumed-btn'],
+    from: 'logs-from', to: 'logs-to', runBtn: 'logs-run-btn', out: 'logs-out',
+    getUserId: () => currentUser ? currentUser.user_id : null,
+  });
+  $('logs-7d-btn').onclick  = () => { logsViewer.setQuickRange(7);  logsViewer.run(); };
+  $('logs-30d-btn').onclick = () => { logsViewer.setQuickRange(30); logsViewer.run(); };
+  $('logs-all-btn').onclick = () => { $('logs-from').value = ''; $('logs-to').value = ''; logsViewer.run(); };
 
   let logEnabledValue = 1;
   let isAdminValue     = 0;
@@ -281,6 +322,7 @@
 
   function renderDetail(u) {
     $('detail-userid-display').textContent = u.user_id;
+    $('logs-participant-id').textContent = u.user_id;
     $('detail-name').value   = u.name  || '';
     $('detail-email').value  = u.email || '';
     $('detail-notes').value  = u.notes || '';
