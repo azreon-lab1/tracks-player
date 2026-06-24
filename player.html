@@ -582,6 +582,26 @@
     stopWatchdog();
     releaseWakeLock();
   });
+
+  // Persistent native error listener — separate from the one-time listener
+  // above (line ~413) that only handles initial-load UI cleanup. Until now,
+  // the ONLY path that ever logged 'error' was the watchdog's polling-based
+  // stall detection (frozen position + frozen buffer for 5s) — a genuine
+  // native MediaError firing mid-playback without producing that exact
+  // frozen pattern would go completely unrecorded. This complements the
+  // watchdog rather than replacing it; both can legitimately fire for the
+  // same real incident (immediate native error, then the watchdog catching
+  // the resulting stall a few seconds later if recovery isn't fast enough)
+  // — that's two honest records of one incident, not double-counting.
+  // Suppressed during RECONNECTING/SWITCHING_BLOB since those states
+  // deliberately manipulate audio.src/load() themselves and could raise a
+  // transient 'error' as a side effect of our own code, not a real fault.
+  audio.addEventListener('error', () => {
+    if (internalState === PlayerState.RECONNECTING || internalState === PlayerState.SWITCHING_BLOB) return;
+    if (!currentTrack || audio.ended) return;
+    logEvent('error', eventDiagnostics({ trigger: 'native_error' }));
+  });
+
   // Diagnostic snapshot attachable to ANY logEvent call (not just errors) —
   // "eventDetail" so a session can be reconstructed from the logs alone
   // afterwards, instead of needing to guess from position/timestamp alone.
@@ -853,6 +873,42 @@
       }),
     });
   }
+
+  // sendBeacon variant — a normal fetch() can be silently cancelled by the
+  // browser mid-flight once the page is actually being torn down, which is
+  // exactly the moment 'pagehide' fires. sendBeacon is built specifically to
+  // survive that, at the cost of not supporting custom headers — the token
+  // goes via the existing ?t= query-param fallback (same one the <audio>
+  // element itself already relies on, since it can't send headers either).
+  function logEventBeacon(type, extra = {}) {
+    if (!currentTrack || !token) return;
+    const body = JSON.stringify({
+      clientTimestamp: new Date().toISOString(),
+      trackId:    currentTrack.id,
+      trackTitle: currentTrack.title,
+      trackCode:  currentTrack.track_code ?? null,
+      eventType:  type,
+      positionMs: Math.round((audio.currentTime || 0) * 1000),
+      durationMs: isFinite(audio.duration) ? Math.round(audio.duration * 1000) : null,
+      sessionId,
+      ...extra,
+    });
+    navigator.sendBeacon(`${WORKER}/log?t=${encodeURIComponent(token)}`, body);
+  }
+
+  // 'pagehide' fires when the page is being hidden — which usually means the
+  // tab/app is genuinely closing or navigating away, but on mobile it can
+  // also fire on a hard backgrounding indistinguishable from 'visibilitychange'
+  // alone. Logged honestly as "the page hid, possibly closing" rather than
+  // asserting certainty the platform doesn't actually give us — a 'foreground'
+  // arriving later in the same session would mean it wasn't actually closed.
+  // Without this, closing mid-playback left precisely zero signal: the session
+  // just goes silent forever, the same ambiguity that made the play_logs id
+  // 5917 investigation harder than it needed to be.
+  window.addEventListener('pagehide', () => {
+    if (!currentTrack || audio.ended) return;
+    logEventBeacon('page_close', eventDiagnostics({ trigger: 'pagehide' }));
+  });
 
   $('reports-btn').onclick = () => location.href = 'reports.html';
 
