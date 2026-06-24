@@ -598,6 +598,7 @@
         connectionType:  conn ? (conn.effectiveType || null) : null,
         connectionRttMs: conn ? (conn.rtt ?? null) : null,
         visibilityState: document.visibilityState,
+        wakeLockHeld:    !!wakeLockSentinel,
         ...extra,
       }),
     };
@@ -665,10 +666,25 @@
         internalState = PlayerState.RECONNECTING;
         audio.src = `${WORKER}/audio/${currentTrack.r2_key}?t=${encodeURIComponent(token)}`;
         audio.load(); audio.currentTime = pos;
+        // Log the outcome of every recovery attempt, success or failure — a
+        // silent .catch() here would mean a failed auto-resume leaves zero
+        // trace in the data, indistinguishable from the participant simply
+        // never pressing play again. err.name (e.g. 'NotAllowedError') is
+        // the direct evidence for whether this is an autoplay-policy block.
         audio.play().then(() => {
           internalState = PlayerState.NORMAL;
           setLoading(false); showPause(true); startHeartbeat(); resetWatchdog();
-        }).catch(() => { internalState = PlayerState.NORMAL; setLoading(false); });
+          logEvent('recovery', eventDiagnostics({ trigger: 'watchdog_recovery', outcome: 'success' }));
+        }).catch(err => {
+          internalState = PlayerState.NORMAL;
+          setLoading(false);
+          logEvent('recovery', eventDiagnostics({
+            trigger: 'watchdog_recovery',
+            outcome: 'failed',
+            recoveryErrorName: err && err.name,
+            recoveryErrorMessage: err && err.message,
+          }));
+        });
       }
       lastPosition    = audio.currentTime;
       lastBufferedEnd = bufEnd;
@@ -693,6 +709,22 @@
       acquireWakeLock();
     }
   });
+
+  // Page Lifecycle API — Chromium only (Android Chrome), not Safari. Gives
+  // a more granular signal than visibilitychange alone: 'hidden' just means
+  // not visible, but 'freeze' means the browser has actually suspended the
+  // page's JS execution/timers, which 'hidden' on its own doesn't tell us.
+  // Feature-detected; silently does nothing on browsers without it (iOS Safari).
+  if ('onfreeze' in document) {
+    document.addEventListener('freeze', () => {
+      if (!currentTrack || audio.ended) return;
+      logEvent('page_freeze', eventDiagnostics());
+    });
+    document.addEventListener('resume', () => {
+      if (!currentTrack || audio.ended) return;
+      logEvent('page_resume', eventDiagnostics());
+    });
+  }
 
   function showPause(on) {
     $('icon-play').style.display  = on ? 'none' : '';
