@@ -45,6 +45,8 @@
     .sort-arr.desc { border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 6px solid currentColor; }
     #change-protocol-finish-btn { cursor: pointer; }
     #change-protocol-finish-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .quick-range-btn { flex: 1; padding: 8px; border: 1.5px solid #7fb8db; border-radius: 8px; font-size: .85rem; background: #eaf4fb; color: #1d5d82; cursor: pointer; }
+    .quick-range-btn:hover { background: #d8ecf8; }
     .report-th { font-size: .67rem; font-weight: 700; color: #bbb; text-transform: uppercase; letter-spacing: .04em; overflow: hidden; white-space: nowrap; padding: 0 0 7px; border-bottom: 2px solid #f0f0f0; user-select: none; }
     .report-th[data-sortable] { cursor: pointer; }
     .report-th[data-sortable]:hover { color: #999; }
@@ -204,6 +206,42 @@
             <button id="change-protocol-finish-btn" style="flex:1;margin-top:0;padding:14px;background:var(--warning);color:var(--warning-text);border:none;border-radius:8px;font-size:1rem" disabled>Finish Protocol</button>
           </div>
           <div id="change-protocol-msg" class="msg"></div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;border-top:1px solid #f0f0f0;padding-top:12px">
+        <button id="logs-btn" style="width:100%;padding:10px 14px;border:1.5px solid;border-radius:8px;font-size:.88rem;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between">
+          Compliance Logs
+          <span class="expand-arrow">▾</span>
+        </button>
+        <div id="logs-section" style="display:none;flex-direction:column;gap:8px;margin-top:12px">
+          <select id="logs-user" style="width:100%;padding:10px;border:1px solid var(--tertiary);border-radius:8px;font-size:.9rem;color:#333">
+            <option value="">All participants</option>
+          </select>
+          <p class="field-label" style="margin:4px 0 0">Tier</p>
+          <div style="display:flex;gap:8px">
+            <button id="logs-strict-btn"  style="flex:1">Strict</button>
+            <button id="logs-lenient-btn" style="flex:1">Lenient</button>
+            <button id="logs-resumed-btn" style="flex:1">Resumed</button>
+          </div>
+          <p class="field-label" style="margin:4px 0 0">Quick range</p>
+          <div style="display:flex;gap:8px">
+            <button class="quick-range-btn" id="logs-7d-btn">Last 7 days</button>
+            <button class="quick-range-btn" id="logs-30d-btn">Last 30 days</button>
+            <button class="quick-range-btn" id="logs-all-btn">All time</button>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <div style="flex:1">
+              <p class="field-label" style="margin:0 0 4px">From (optional)</p>
+              <input id="logs-from" type="date" style="margin:0">
+            </div>
+            <div style="flex:1">
+              <p class="field-label" style="margin:0 0 4px">To (optional)</p>
+              <input id="logs-to" type="date" style="margin:0">
+            </div>
+          </div>
+          <button class="secondary" id="logs-run-btn" style="margin-top:4px">Run</button>
+          <div id="logs-out" style="margin-top:8px"><p class="msg">Run a query to see results.</p></div>
         </div>
       </div>
     </div>
@@ -933,6 +971,7 @@
       renderUsers(allUsersList);
       populateResendNotifRecipientSelect();
       populateChangeProtocolSelect();
+      populateLogsUserSelect();
     } catch {
       $('users-list').innerHTML = '<p class="msg err">Failed to load users.</p>';
     }
@@ -1033,6 +1072,29 @@
     const userId = $('change-protocol-user').value;
     submitProtocolChange(this, userId, null);
   };
+
+  // ── Compliance Logs ─────────────────────────────────────────────────
+  expandableButton('logs-btn', 'logs-section');
+
+  function populateLogsUserSelect() {
+    const sel = $('logs-user');
+    while (sel.options.length > 1) sel.remove(1);
+    allUsersList.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value       = u.user_id;
+      opt.textContent = `${u.user_id} — ${u.name}`;
+      sel.appendChild(opt);
+    });
+  }
+
+  const logsViewer = complianceLogsViewer({
+    tierBtns: ['logs-strict-btn', 'logs-lenient-btn', 'logs-resumed-btn'],
+    from: 'logs-from', to: 'logs-to', runBtn: 'logs-run-btn', out: 'logs-out',
+    getUserId: () => $('logs-user').value || null,
+  });
+  $('logs-7d-btn').onclick  = () => { logsViewer.setQuickRange(7);  logsViewer.run(); };
+  $('logs-30d-btn').onclick = () => { logsViewer.setQuickRange(30); logsViewer.run(); };
+  $('logs-all-btn').onclick = () => { $('logs-from').value = ''; $('logs-to').value = ''; logsViewer.run(); };
 
   $('resend-notif-send-btn').onclick = async function() {
     const email = $('resend-notif-recipient').value;
