@@ -93,10 +93,13 @@ function expandableButton(btnId, sectionId, colour) {
   setState(false);
 }
 
-// Reusable "grant tracks" picker: scope toggle (specific/all) + checkbox grid + expiry date.
-// Used by both the Add User flow (reports.html) and Manage User (manage-user.html) so the
-// component only needs to look and behave one way.
-// ids: { expandBtn, section, specificBtn, allBtn, checks, deselectBtn?, expiry, colour? }
+// Reusable "grant tracks" picker: scope toggle (specific/all) + checkbox grid + expiry date,
+// plus an optional "Notify participant" dropdown (none / with link to one of the granted
+// tracks / without link). Used by both the Add User flow (reports.html) and Manage User
+// (manage-user.html) so the component only needs to look and behave one way.
+// ids: { expandBtn, section, specificBtn, allBtn, checks, deselectBtn?, expiry, colour?,
+//        notifySelect?, notifyLinkWrap?, notifyLinkSelect? } — the three notify* keys are
+// optional as a group; omit all three to skip the notify UI entirely.
 function trackGrantPicker(ids) {
   let allTracksList = [];
   let scope          = 'specific';
@@ -109,6 +112,7 @@ function trackGrantPicker(ids) {
       scope = s;
       $(ids.checks).style.display = s === 'specific' ? 'grid' : 'none';
       if (ids.deselectBtn) $(ids.deselectBtn).style.display = s === 'specific' ? '' : 'none';
+      refreshNotifyLinkOptions();
     },
     ids.colour
   );
@@ -126,7 +130,35 @@ function trackGrantPicker(ids) {
   if (ids.deselectBtn) {
     $(ids.deselectBtn).onclick = () => {
       document.querySelectorAll('.' + ids.checks + '-check').forEach(c => c.checked = false);
+      refreshNotifyLinkOptions();
     };
+  }
+
+  // Rebuilds the "which track to link to" dropdown from whatever's currently
+  // selected — the full catalog when scope is 'all', else just the ticked
+  // boxes. Re-run on every selection change so it never goes stale.
+  function refreshNotifyLinkOptions() {
+    if (!ids.notifyLinkSelect) return;
+    const sel = $(ids.notifyLinkSelect);
+    const prev = sel.value;
+    const candidates = scope === 'all'
+      ? allTracksList
+      : allTracksList.filter(t => document.querySelector(`.${ids.checks}-check[value="${t.id}"]`)?.checked);
+    sel.innerHTML = '<option value="">Select track…</option>' +
+      candidates.map(t => `<option value="${t.track_code}">${t.track_code} — ${t.title}</option>`).join('');
+    sel.value = candidates.some(t => t.track_code === prev) ? prev : '';
+  }
+
+  if (ids.checks) {
+    $(ids.checks).addEventListener('change', refreshNotifyLinkOptions);
+  }
+
+  if (ids.notifySelect && ids.notifyLinkWrap) {
+    $(ids.notifySelect).addEventListener('change', () => {
+      const showLink = $(ids.notifySelect).value === 'TRACK_ACCESS_L_V1';
+      $(ids.notifyLinkWrap).style.display = showLink ? 'block' : 'none';
+      if (showLink) refreshNotifyLinkOptions();
+    });
   }
 
   async function load() {
@@ -135,6 +167,7 @@ function trackGrantPicker(ids) {
       const data = await res.json();
       allTracksList = data.tracks || [];
       renderChecks();
+      refreshNotifyLinkOptions();
     } catch {
       $(ids.checks).innerHTML = '<p class="msg err">Failed to load tracks.</p>';
     }
@@ -144,7 +177,11 @@ function trackGrantPicker(ids) {
     const trackIds = scope === 'all'
       ? 'all'
       : [...document.querySelectorAll('.' + ids.checks + '-check:checked')].map(c => Number(c.value));
-    return { scope, trackIds, expiryDate: $(ids.expiry).value || null };
+    const notifyCode = ids.notifySelect ? ($(ids.notifySelect).value || null) : null;
+    const notifyLinkTrackCode = (notifyCode === 'TRACK_ACCESS_L_V1' && ids.notifyLinkSelect)
+      ? ($(ids.notifyLinkSelect).value || null)
+      : null;
+    return { scope, trackIds, expiryDate: $(ids.expiry).value || null, notifyCode, notifyLinkTrackCode };
   }
 
   function hasSelection() {
@@ -157,6 +194,9 @@ function trackGrantPicker(ids) {
     document.querySelectorAll('.' + ids.checks + '-check').forEach(c => c.checked = false);
     setScope('specific');
     $(ids.expiry).value = '';
+    if (ids.notifySelect)     $(ids.notifySelect).value = '';
+    if (ids.notifyLinkWrap)   $(ids.notifyLinkWrap).style.display = 'none';
+    if (ids.notifyLinkSelect) $(ids.notifyLinkSelect).innerHTML = '<option value="">Select track…</option>';
   }
 
   return { load, getSelection, hasSelection, reset };

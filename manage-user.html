@@ -175,6 +175,16 @@
             <button id="grant-deselect-btn" type="button" style="align-self:flex-start;background:none;border:none;color:var(--tertiary);font-size:.8rem;padding:0;cursor:pointer;text-decoration:underline">Deselect all</button>
             <p style="font-size:.78rem;color:var(--text-muted);margin:4px 0 0">Track access expiry (optional, applies to all granted tracks)</p>
             <input id="grant-expiry" type="date" style="margin:0">
+            <p style="font-size:.78rem;color:var(--text-muted);margin:4px 0 0">Notify participant (optional)</p>
+            <select id="grant-notify" style="margin:0;padding:10px;border-radius:8px;font-size:.9rem">
+              <option value="">Don't notify</option>
+              <option value="TRACK_ACCESS_L_V1">With link to a specific track</option>
+              <option value="TRACK_ACCESS_V2">Without link</option>
+            </select>
+            <div id="grant-notify-link-wrap" style="display:none">
+              <p style="font-size:.78rem;color:var(--text-muted);margin:4px 0 0">Which track to link to</p>
+              <select id="grant-notify-link" style="margin:0;padding:10px;border-radius:8px;font-size:.9rem"><option value="">Select track…</option></select>
+            </div>
             <button class="primary" id="grant-tracks-submit-btn" style="margin-top:4px">Grant Access</button>
             <div id="grant-tracks-msg" class="msg"></div>
           </div>
@@ -262,6 +272,7 @@
     expandBtn: 'grant-tracks-btn', section: 'grant-tracks-section',
     specificBtn: 'grant-specific-btn', allBtn: 'grant-all-btn',
     checks: 'grant-checks', deselectBtn: 'grant-deselect-btn', expiry: 'grant-expiry',
+    notifySelect: 'grant-notify', notifyLinkWrap: 'grant-notify-link-wrap', notifyLinkSelect: 'grant-notify-link',
     colour: 'var(--add-green)',
   });
 
@@ -497,7 +508,7 @@
   }
 
   $('grant-tracks-submit-btn').onclick = async function() {
-    const { trackIds, expiryDate } = grantTracksPicker.getSelection();
+    const { trackIds, expiryDate, notifyCode, notifyLinkTrackCode } = grantTracksPicker.getSelection();
 
     if (trackIds !== 'all' && trackIds.length === 0) {
       $('grant-tracks-msg').textContent = 'Select at least one track, or choose All tracks.';
@@ -516,7 +527,25 @@
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        $('grant-tracks-msg').textContent = data.message || 'Track access granted.';
+        let message = data.message || 'Track access granted.';
+
+        if (notifyCode) {
+          try {
+            const ntRes  = await fetch(WORKER + '/admin/send-templates', {
+              method:  'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+              body:    JSON.stringify({ email: currentUser.email, name: currentUser.name, template_codes: [notifyCode], link_track_code: notifyLinkTrackCode }),
+            });
+            const ntData = await ntRes.json();
+            message += ntRes.ok && ntData.success && ntData.results[0].success
+              ? ' Notification sent.'
+              : ' Notification failed.';
+          } catch {
+            message += ' Notification failed (network error).';
+          }
+        }
+
+        $('grant-tracks-msg').textContent = message;
         $('grant-tracks-msg').className   = 'msg ok';
         grantTracksPicker.reset();
         loadUserTracks();
