@@ -413,7 +413,7 @@
   // Safe as long as only trusted HTML files are uploaded by admins.
   const HEADER_IMAGE_URL    = '';  // page-specific banner; '' = use HEADER_IMAGE_DEFAULT in ui.js
   const HEADER_IMAGE_HEIGHT = '';  // '' = use HEADER_IMAGE_HEIGHT_DEFAULT in ui.js (currently 70px)
-  const HEADER_IMAGE_FILTER = '';  // '' = use HEADER_IMAGE_FILTER_DEFAULT in ui.js (currently white)
+  const HEADER_IMAGE_FILTER = 'brightness(0) invert(1) drop-shadow(0 3px 4px rgba(0,0,0,.35))';  // white recolor (matching the default) + a soft shadow that follows each letter's shape
   const REPORT_SAME_ORIGIN  = true;
   const ADD_GREEN           = '#03450a';
 
