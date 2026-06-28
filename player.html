@@ -8,7 +8,8 @@
   <style>
     :root {
       --bg:             #0a0604;
-      --bg-image:       radial-gradient(ellipse at 8% 10%, rgba(235,182,83,.90) 0%, transparent 50%),
+      --bg-image:       linear-gradient(248deg, transparent 0%, transparent 32%, rgba(250,225,160,.45) 42%, rgba(255,240,200,.85) 48%, rgba(250,225,160,.45) 54%, transparent 64%, transparent 100%),
+                        radial-gradient(ellipse at 8% 10%, rgba(235,182,83,.90) 0%, transparent 50%),
                         radial-gradient(ellipse at 85% 85%, rgba(10,6,2,.35) 0%, transparent 45%),
                         linear-gradient(145deg, #d4a818 0%, #3a2808 40%, #1a0e04 65%, #0a0604 100%);
       --primary:        #626c78;       /* ── change only this to retheme all action elements ── */
@@ -185,7 +186,7 @@
 
   const HEADER_IMAGE_URL      = '';  // page-specific banner; '' = use HEADER_IMAGE_DEFAULT in ui.js
   const HEADER_IMAGE_HEIGHT   = '';  // '' = use HEADER_IMAGE_HEIGHT_DEFAULT in ui.js (currently 70px)
-  const HEADER_IMAGE_FILTER   = '';  // '' = use HEADER_IMAGE_FILTER_DEFAULT in ui.js (currently white)
+  const HEADER_IMAGE_FILTER   = 'brightness(0) invert(1) drop-shadow(0 3px 4px rgba(0,0,0,.35))';  // white recolor (matching the default) + a soft shadow that follows each letter's shape
 
   const DEFAULT_MODE          = 'stream';
   const MODE_TOGGLE_POSITION  = 'bottom';
