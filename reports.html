@@ -131,7 +131,7 @@
       <h2>User Management</h2>
       <h3>Users</h3>
       <div id="users-list"><p class="msg">Loading…</p></div>
-      <div style="margin-top:16px;border-top:1px solid #f0f0f0;padding-top:12px">
+      <div style="margin-top:16px;border-top:1.5px solid #7f693a;padding-top:12px">
         <button id="add-user-btn" style="width:100%;padding:10px 14px;border:1.5px solid;border-radius:8px;font-size:.88rem;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between">
           Add User
           <span class="expand-arrow">▾</span>
@@ -149,7 +149,7 @@
             Give Tracks Access
             <span class="expand-arrow">▾</span>
           </button>
-          <div id="give-tracks-section" style="display:none;flex-direction:column;gap:8px;margin-top:8px">
+          <div id="give-tracks-section" style="display:none;flex-direction:column;gap:8px">
             <div style="display:flex;gap:8px">
               <button id="tracks-specific-btn" style="flex:1">Specific tracks</button>
               <button id="tracks-all-btn" style="flex:1">All tracks</button>
@@ -158,7 +158,7 @@
             <button id="tracks-deselect-btn" type="button" style="align-self:flex-start;background:none;border:none;color:var(--tertiary);font-size:.8rem;padding:0;cursor:pointer;text-decoration:underline">Deselect all</button>
             <p style="font-size:.78rem;color:var(--text-muted);margin:4px 0 0">Track access expiry (optional, applies to all granted tracks)</p>
             <input id="tracks-expiry" type="date" style="margin:0">
-            <p style="font-size:.78rem;color:var(--text-muted);margin:4px 0 0">Notify participant (optional)</p>
+            <p style="font-size:.78rem;color:var(--text-muted);margin:4px 0 0">Notify about the Tracks (optional)</p>
             <select id="tracks-notify" style="margin:0;padding:10px;border-radius:8px;font-size:.9rem">
               <option value="">Don't notify</option>
               <option value="TRACK_ACCESS_L_V1">With link to a specific track</option>
@@ -170,7 +170,7 @@
             </div>
           </div>
 
-          <button id="send-notif-btn" style="width:100%;padding:10px 14px;border:1.5px solid;border-radius:8px;font-size:.88rem;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+          <button id="send-notif-btn" style="width:100%;padding:10px 14px;border:1.5px solid;border-radius:8px;font-size:.88rem;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between;margin-top:18px">
             Send Notifications
             <span class="expand-arrow">▾</span>
           </button>
@@ -183,7 +183,7 @@
         </div>
       </div>
 
-      <div style="margin-top:16px;border-top:1px solid #f0f0f0;padding-top:12px">
+      <div style="margin-top:16px;border-top:1.5px solid #7f693a;padding-top:12px">
         <button id="resend-notif-btn" style="width:100%;padding:10px 14px;border:1.5px solid;border-radius:8px;font-size:.88rem;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between">
           Resend Notifications
           <span class="expand-arrow">▾</span>
@@ -202,7 +202,7 @@
         </div>
       </div>
 
-      <div style="margin-top:16px;border-top:1px solid #f0f0f0;padding-top:12px">
+      <div style="margin-top:16px;border-top:1.5px solid #7f693a;padding-top:12px">
         <button id="change-protocol-btn" style="width:100%;padding:10px 14px;border:1.5px solid;border-radius:8px;font-size:.88rem;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between">
           Change Participant Protocol
           <span class="expand-arrow">▾</span>
@@ -223,7 +223,7 @@
         </div>
       </div>
 
-      <div style="margin-top:16px;border-top:1px solid #f0f0f0;padding-top:12px">
+      <div style="margin-top:16px;border-top:1.5px solid #7f693a;padding-top:12px">
         <button id="logs-btn" style="width:100%;padding:10px 14px;border:1.5px solid;border-radius:8px;font-size:.88rem;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between">
           Compliance Logs
           <span class="expand-arrow">▾</span>
@@ -956,6 +956,7 @@
     specificBtn: 'tracks-specific-btn', allBtn: 'tracks-all-btn',
     checks: 'tracks-checks', deselectBtn: 'tracks-deselect-btn', expiry: 'tracks-expiry',
     notifySelect: 'tracks-notify', notifyLinkWrap: 'tracks-notify-link-wrap', notifyLinkSelect: 'tracks-notify-link',
+    border: true,
   });
 
   function loadAdminTracksList() { return giveTracksPicker.load(); }

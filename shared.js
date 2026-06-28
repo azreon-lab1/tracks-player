@@ -72,7 +72,14 @@ function expandableCard(cardId, openColour, closedColour, startOpen) {
   setState(isOpen);
 }
 
-function expandableButton(btnId, sectionId, colour) {
+// border (optional, default false): when true, encloses the section in a
+// border matching the button's open-state border colour exactly (left/right/
+// bottom only, no top) so it reads as one continuous shape attached to the
+// button above, rather than a separate floating box below it. Applied once
+// at setup, not per open/close — the section is only ever visible while the
+// button itself is in its "open" state (border-color === c), so a static
+// border using the same `c` always matches without needing to track state.
+function expandableButton(btnId, sectionId, colour, border) {
   const btn     = $(btnId);
   const section = $(sectionId);
   const c       = colour || 'var(--tertiary)';
@@ -80,6 +87,13 @@ function expandableButton(btnId, sectionId, colour) {
   const closedBg   = `color-mix(in srgb, ${c} 4%, white)`;
   const closedBorder = `color-mix(in srgb, ${c} 30%, white)`;
   const closedText   = `color-mix(in srgb, ${c} 50%, #888)`;
+  if (border) {
+    section.style.marginTop    = '0';
+    section.style.padding      = '12px';
+    section.style.border       = `1.5px solid ${c}`;
+    section.style.borderTop    = 'none';
+    section.style.borderRadius = '0 0 8px 8px';
+  }
   function setState(open) {
     section.style.display = open ? 'flex'        : 'none';
     btn.style.background  = open ? openBg        : closedBg;
@@ -98,13 +112,14 @@ function expandableButton(btnId, sectionId, colour) {
 // tracks / without link). Used by both the Add User flow (reports.html) and Manage User
 // (manage-user.html) so the component only needs to look and behave one way.
 // ids: { expandBtn, section, specificBtn, allBtn, checks, deselectBtn?, expiry, colour?,
-//        notifySelect?, notifyLinkWrap?, notifyLinkSelect? } — the three notify* keys are
-// optional as a group; omit all three to skip the notify UI entirely.
+//        notifySelect?, notifyLinkWrap?, notifyLinkSelect?, border? } — the three notify*
+// keys are optional as a group; omit all three to skip the notify UI entirely. `border`
+// (optional, default false) encloses the section visually — see expandableButton().
 function trackGrantPicker(ids) {
   let allTracksList = [];
   let scope          = 'specific';
 
-  expandableButton(ids.expandBtn, ids.section, ids.colour);
+  expandableButton(ids.expandBtn, ids.section, ids.colour, ids.border);
 
   const setScope = toggleSelector(
     [ids.specificBtn, ids.allBtn], ['specific', 'all'],
@@ -204,7 +219,7 @@ function trackGrantPicker(ids) {
 
 // Reusable "send notification templates" checklist: loads email_templates via
 // GET /admin/templates and lets the caller select zero or more codes to send.
-// ids: { expandBtn?, section?, checks, category?, colour? } — expandBtn/section
+// ids: { expandBtn?, section?, checks, category?, colour?, border? } — expandBtn/section
 // are optional (omit when the checklist is already inside its own expandable
 // and doesn't need a further nested toggle). category filters server-side
 // (e.g. 'general' excludes report templates that need {{report_title}} and
@@ -213,7 +228,7 @@ function notifyTemplatesPicker(ids) {
   let allTemplates = [];
 
   if (ids.expandBtn && ids.section) {
-    expandableButton(ids.expandBtn, ids.section, ids.colour);
+    expandableButton(ids.expandBtn, ids.section, ids.colour, ids.border);
   }
 
   function renderChecks() {
