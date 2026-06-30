@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Azreon Tracks Platform</title>
+  <title>Player</title>
+  <link rel="icon" type="image/png" href="favicon.ico">
   <link rel="stylesheet" href="base.css">
   <style>
     :root {
@@ -163,11 +164,12 @@
   </template>
 
 </div>
+<script src="config.js"></script>
 <script src="shared.js"></script>
 <script>
   const UI = {
     PLATFORM_ARTIST:    'Azreon Tracks Platform',
-    PAGE_TITLE:         'Azreon Tracks Platform',
+    PAGE_TITLE:         WEBSITE_TITLE,
     LOGOUT_BTN:         'Log Out',
     NOW_PLAYING_IDLE:   'Select a track below',
     NO_TRACKS_MSG:      'No tracks available.',
@@ -189,7 +191,7 @@
 
   const DEFAULT_MODE          = 'stream';
   const MODE_TOGGLE_POSITION  = 'bottom';
-  const SINGLE_TRACK_HIDES_LIST = true;
+  // SINGLE_TRACK_HIDES_LIST, REPORTS_IN_PLAYER, FADE_AUDIO_ACTIONS now live in config.js
   const SINGLE_TRACK_HIDE = [
     'track-list-card',
     'reports-btn',
@@ -199,7 +201,6 @@
     // 'mode-card-bottom',
     // 'mode-toggle',
   ];
-  const REPORTS_IN_PLAYER = true;  // true = My Reports card inline in player; false = Reports button → reports.html
 
   let activeMode = localStorage.getItem('ap_mode') || DEFAULT_MODE;
   if (DEFAULT_MODE === 'hybrid') activeMode = 'hybrid';
@@ -455,7 +456,6 @@
       });
   }
 
-  const FADE_AUDIO_ACTIONS = true;
   const FADE_STEPS  = 8;
   const FADE_STEP_MS = 5;
   let fadeTimer  = null;

@@ -2,6 +2,12 @@ const WORKER = 'https://audio-worker.azreon.workers.dev';
 const $      = id => document.getElementById(id);
 const token  = localStorage.getItem('ap_token');
 
+// Single source of truth for the site's brand name — every page derives its
+// own PAGE_TITLE from this (e.g. `WEBSITE_TITLE` or `'Management — ' +
+// WEBSITE_TITLE`) instead of hardcoding the brand text itself. Change the
+// name in exactly one place; every page's <title> updates on next load.
+const WEBSITE_TITLE = 'Azreon Platform';
+
 function logout() {
   localStorage.removeItem('ap_token');
   localStorage.removeItem('ap_email');
@@ -273,14 +279,44 @@ function notifyTemplatesPicker(ids) {
 // (admin picks any participant via getUserId) and manage-user.html (user is
 // already fixed — getUserId just returns that page's currentUser.user_id).
 // ids: { tierBtns: [strictId, lenientId, resumedId], from, to, runBtn, out,
-//        getUserId: () => string|null, colour? }
+//        getUserId: () => string|null, hint?, colour? }
 // Each row shows the user_id only when no specific user is selected for that
 // run (getUserId() returned null/empty) — if a user is fixed or chosen, it's
 // already shown elsewhere in the UI and would just be redundant noise.
+// `hint` (optional) is an element id whose text updates to a one-line
+// explanation of whichever tier is currently selected, same pattern as
+// player.html's mode-toggle hint. `hintsWide` (optional) is [strictId,
+// lenientId, resumedId] — three elements populated once with ALL three
+// descriptions (for a wide-viewport side-by-side layout), independent of
+// whichever tier is currently selected. TIER_HINTS is the single source of
+// truth for this text — both usages read from it, neither hardcodes a copy.
+const TIER_HINTS = {
+  strict:  'Reached the end with zero interruptions (no pauses, seeks, or errors at all).',
+  lenient: 'Allows one quick pause if resumed within 3 seconds.',
+  resumed: 'Reached the end despite any interruptions (if nothing was skipped).',
+};
+
 function complianceLogsViewer(ids) {
-  let tier = 'strict';
-  const setTier = toggleSelector(ids.tierBtns, ['strict', 'lenient', 'resumed'], v => tier = v, ids.colour);
-  setTier('strict');
+  let tier = 'lenient';
+  const setTier = toggleSelector(ids.tierBtns, ['strict', 'lenient', 'resumed'], v => {
+    tier = v;
+    if (ids.hint) $(ids.hint).textContent = TIER_HINTS[v];
+  }, ids.colour);
+  setTier('lenient');
+
+  if (ids.hintsWide) {
+    ['strict', 'lenient', 'resumed'].forEach((t, i) => {
+      const el = $(ids.hintsWide[i]);
+      if (el) el.textContent = TIER_HINTS[t];
+    });
+  }
+
+  // Feature flag from config.js — hidden entirely (not just disabled) when
+  // off, regardless of whether there are results. Strict === true, not just
+  // truthy, so an undefined flag (config.js missing/not loaded) defaults to
+  // hidden rather than silently exposing the feature.
+  const exportFeatureOn = typeof LOG_EXPORT_CONTENT_ENABLED !== 'undefined' && LOG_EXPORT_CONTENT_ENABLED === true;
+  if (ids.exportBtn && !exportFeatureOn) $(ids.exportBtn).style.display = 'none';
 
   function fmt(iso) {
     if (!iso) return '';
@@ -303,17 +339,37 @@ function complianceLogsViewer(ids) {
     `).join('');
   }
 
-  async function run() {
-    const out    = $(ids.out);
+  // Shared by run() and exportCsv() — both need the same current selection.
+  function currentParams() {
     const userId = ids.getUserId ? ids.getUserId() : null;
     let   from   = $(ids.from).value;
     let   to     = $(ids.to).value;
-
     // A single filled date (either side) means "just that one day" —
     // not "open-ended", which would otherwise silently return all time.
     if (from && !to) to = from;
     else if (to && !from) from = to;
+    return { userId, from, to };
+  }
 
+  // Snapshot of the params + tier that produced the results currently on
+  // screen — null whenever there's nothing (yet) to export. Export deliberately
+  // re-exports THIS, not whatever's currently typed into the form, so it
+  // always matches what's actually being looked at, even if the inputs have
+  // since been changed without re-running.
+  let lastResult = null;
+
+  function setExportEnabled(on) {
+    if (ids.exportBtn) $(ids.exportBtn).disabled = !on;
+  }
+  setExportEnabled(false);
+
+  async function run() {
+    const out = $(ids.out);
+    const params = currentParams();
+    const { userId, from, to } = params;
+
+    lastResult = null;
+    setExportEnabled(false);
     out.innerHTML = '<p class="msg">Loading…</p>';
     let url = WORKER + '/admin/logs?type=' + tier;
     if (userId)     url += '&user_id=' + encodeURIComponent(userId);
@@ -327,9 +383,27 @@ function complianceLogsViewer(ids) {
         return;
       }
       render(data.tracks, !userId);
+      if (data.tracks.length) {
+        lastResult = { tier, ...params };
+        setExportEnabled(true);
+      }
     } catch {
       out.innerHTML = '<p class="msg err">Network error.</p>';
     }
+  }
+
+  // Opens the equivalent CSV download in a new tab — plain navigation can't
+  // set an Authorization header, so the token rides the same ?t= query-param
+  // fallback /audio/:key and /report already rely on (getSessionUser extracts
+  // it from either place). Uses lastResult, not currentParams(), so the
+  // export always matches the results actually shown on screen.
+  function exportCsv() {
+    if (!lastResult) return;
+    const { tier: t, userId, from, to } = lastResult;
+    let url = WORKER + '/admin/logs?type=' + t + '&format=csv&t=' + encodeURIComponent(token);
+    if (userId)     url += '&user_id=' + encodeURIComponent(userId);
+    if (from && to) url += '&from=' + from + '&to=' + to;
+    window.open(url, '_blank');
   }
 
   function setQuickRange(days) {
@@ -341,8 +415,79 @@ function complianceLogsViewer(ids) {
   }
 
   $(ids.runBtn).onclick = run;
+  if (ids.exportBtn) $(ids.exportBtn).onclick = exportCsv;
 
-  return { run, setQuickRange };
+  return { run, setQuickRange, exportCsv };
+}
+
+// Generates the full Compliance/Listening Logs markup (everything from the
+// Tier toggle down to the results area) and wires it up via
+// complianceLogsViewer(). reports.html and manage-user.html were carrying
+// two hand-copied versions of this same block — this is the one place it's
+// now written. The only real difference between the two pages is who the
+// logs are scoped to: reports.html lets an admin pick any participant (or
+// "All participants"); manage-user.html is locked to whichever user is
+// currently open. That's the one part callers configure via `opts.mode`:
+//   - mode: 'picker' — renders a participant <select id="logs-user">
+//           (options populated separately by the caller, e.g. once a users
+//           list has loaded)
+//   - mode: 'fixed'  — renders a read-only "Participant ID: <strong>" line
+//           (caller sets its text directly via $('logs-participant-id'))
+// opts.getUserId is always supplied by the caller either way.
+function renderLogsViewer(containerId, opts) {
+  const headerHtml = opts.mode === 'picker'
+    ? `<select id="logs-user" style="width:100%;padding:10px;border:1px solid var(--tertiary);border-radius:8px;font-size:.9rem;color:#333">
+         <option value="">All participants</option>
+       </select>`
+    : `<p class="field-label" style="margin:0 0 8px">Participant ID: <strong id="logs-participant-id" style="color:#333">—</strong></p>`;
+
+  $(containerId).innerHTML = `
+    ${headerHtml}
+    <p class="field-label" style="margin:4px 0 0">Tier</p>
+    <div style="display:flex;gap:8px">
+      <button id="logs-strict-btn"  style="flex:1">Strict</button>
+      <button id="logs-lenient-btn" style="flex:1">Lenient</button>
+      <button id="logs-resumed-btn" style="flex:1">Resumed</button>
+    </div>
+    <div class="tier-hints-wide" style="margin-top:4px">
+      <p id="logs-tier-hint-strict"  style="flex:1;font-size:.72rem;color:var(--text-muted);margin:0"></p>
+      <p id="logs-tier-hint-lenient" style="flex:1;font-size:.72rem;color:var(--text-muted);margin:0"></p>
+      <p id="logs-tier-hint-resumed" style="flex:1;font-size:.72rem;color:var(--text-muted);margin:0"></p>
+    </div>
+    <p id="logs-tier-hint" class="tier-hint-narrow" style="font-size:.72rem;color:var(--text-muted);margin:4px 0 0"></p>
+    <p class="field-label" style="margin:4px 0 0">Quick range</p>
+    <div style="display:flex;gap:8px">
+      <button class="quick-range-btn" id="logs-7d-btn">Last 7 days</button>
+      <button class="quick-range-btn" id="logs-30d-btn">Last 30 days</button>
+      <button class="quick-range-btn" id="logs-all-btn">All time</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <div style="flex:1;min-width:0">
+        <p class="field-label" style="margin:0 0 4px">From (optional)</p>
+        <input id="logs-from" type="date" style="margin:0;width:100%">
+      </div>
+      <div style="flex:1;min-width:0">
+        <p class="field-label" style="margin:0 0 4px">To (optional)</p>
+        <input id="logs-to" type="date" style="margin:0;width:100%">
+      </div>
+    </div>
+    <button class="secondary" id="logs-run-btn" style="margin-top:4px">Run</button>
+    <button class="quick-range-btn" id="logs-export-btn" style="width:100%;margin-top:8px" disabled>Export CSV</button>
+    <div id="logs-out" style="margin-top:8px"><p class="msg">${opts.initialMsg || 'Run a query to see results.'}</p></div>
+  `;
+
+  const viewer = complianceLogsViewer({
+    tierBtns: ['logs-strict-btn', 'logs-lenient-btn', 'logs-resumed-btn'],
+    from: 'logs-from', to: 'logs-to', runBtn: 'logs-run-btn', exportBtn: 'logs-export-btn', out: 'logs-out', hint: 'logs-tier-hint',
+    hintsWide: ['logs-tier-hint-strict', 'logs-tier-hint-lenient', 'logs-tier-hint-resumed'],
+    getUserId: opts.getUserId,
+  });
+
+  $('logs-7d-btn').onclick  = () => { viewer.setQuickRange(7);  viewer.run(); };
+  $('logs-30d-btn').onclick = () => { viewer.setQuickRange(30); viewer.run(); };
+  $('logs-all-btn').onclick = () => { $('logs-from').value = ''; $('logs-to').value = ''; viewer.run(); };
+
+  return viewer;
 }
 
 function toggleSelector(btnIds, values, onChange, colour) {

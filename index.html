@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Azreon Tracks Platform</title>
+  <title>Platform</title>
+  <link rel="icon" type="image/png" href="favicon.ico">
   <link rel="stylesheet" href="base.css">
   <style>
     :root {
@@ -54,8 +55,12 @@
   </div>
 
 </div>
+<script src="config.js"></script>
 <script src="shared.js"></script>
 <script>
+  const PAGE_TITLE = WEBSITE_TITLE;
+  document.title   = PAGE_TITLE;
+
   const HEADER_IMAGE_URL    = null;  // null = disabled on this page; '' = use HEADER_IMAGE_DEFAULT in ui.js
   const HEADER_IMAGE_HEIGHT = '';    // '' = use HEADER_IMAGE_HEIGHT_DEFAULT in ui.js (currently 70px)
   const HEADER_IMAGE_FILTER = '';    // '' = use HEADER_IMAGE_FILTER_DEFAULT in ui.js (currently white)

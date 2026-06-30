@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Manage User — Azreon Tracks Platform</title>
+  <title>Manage User</title>
+  <link rel="icon" type="image/png" href="favicon.ico">
   <link rel="stylesheet" href="base.css">
   <style>
     :root {
@@ -57,6 +58,12 @@
     .field-label { font-size: .78rem; color: var(--text-muted); margin: 4px 0 0; }
     .quick-range-btn { flex: 1; padding: 8px; border: 1.5px solid #7fb8db; border-radius: 8px; font-size: .85rem; background: #eaf4fb; color: #1d5d82; cursor: pointer; }
     .quick-range-btn:hover { background: #d8ecf8; }
+    .quick-range-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .tier-hints-wide { display: none; }
+    @media (min-width: 860px) {
+      .tier-hints-wide { display: flex; gap: 8px; }
+      .tier-hint-narrow { display: none; }
+    }
     #finish-protocol-btn { cursor: pointer; }
     #finish-protocol-btn:disabled { opacity: .5; cursor: not-allowed; }
     .track-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 7px; font-size: .85rem; }
@@ -193,31 +200,7 @@
 
       <div class="card" id="logs-card">
         <h2>Listening Logs</h2>
-        <p class="field-label" style="margin:0 0 8px">Participant ID: <strong id="logs-participant-id" style="color:#333">—</strong></p>
-        <p class="field-label" style="margin:0 0 4px">Tier</p>
-        <div style="display:flex;gap:8px">
-          <button id="logs-strict-btn"  style="flex:1">Strict</button>
-          <button id="logs-lenient-btn" style="flex:1">Lenient</button>
-          <button id="logs-resumed-btn" style="flex:1">Resumed</button>
-        </div>
-        <p class="field-label" style="margin:10px 0 4px">Quick range</p>
-        <div style="display:flex;gap:8px">
-          <button class="quick-range-btn" id="logs-7d-btn">Last 7 days</button>
-          <button class="quick-range-btn" id="logs-30d-btn">Last 30 days</button>
-          <button class="quick-range-btn" id="logs-all-btn">All time</button>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:10px">
-          <div style="flex:1">
-            <p class="field-label" style="margin:0 0 4px">From</p>
-            <input id="logs-from" type="date" style="margin:0">
-          </div>
-          <div style="flex:1">
-            <p class="field-label" style="margin:0 0 4px">To</p>
-            <input id="logs-to" type="date" style="margin:0">
-          </div>
-        </div>
-        <button class="secondary" id="logs-run-btn" style="margin-top:10px">Run</button>
-        <div id="logs-out" style="margin-top:10px"><p class="msg">Pick a tier and range, then Run.</p></div>
+        <div id="logs-section"></div>
       </div>
 
       <div class="card" id="delete-card">
@@ -248,8 +231,12 @@
   </div>
 </div>
 
+<script src="config.js"></script>
 <script src="shared.js"></script>
 <script>
+  const PAGE_TITLE = 'Manage User — ' + WEBSITE_TITLE;
+  document.title   = PAGE_TITLE;
+
   const HEADER_IMAGE_URL    = '';
   const HEADER_IMAGE_HEIGHT = '';
   const HEADER_IMAGE_FILTER = 'brightness(0) invert(1) drop-shadow(0 3px 4px rgba(0,0,0,.35))';  // white recolor (matching the default) + a soft shadow that follows each letter's shape
@@ -276,14 +263,11 @@
     colour: 'var(--add-green)',
   });
 
-  const logsViewer = complianceLogsViewer({
-    tierBtns: ['logs-strict-btn', 'logs-lenient-btn', 'logs-resumed-btn'],
-    from: 'logs-from', to: 'logs-to', runBtn: 'logs-run-btn', out: 'logs-out',
+  const logsViewer = renderLogsViewer('logs-section', {
+    mode: 'fixed',
+    initialMsg: 'Pick a tier and range, then Run.',
     getUserId: () => currentUser ? currentUser.user_id : null,
   });
-  $('logs-7d-btn').onclick  = () => { logsViewer.setQuickRange(7);  logsViewer.run(); };
-  $('logs-30d-btn').onclick = () => { logsViewer.setQuickRange(30); logsViewer.run(); };
-  $('logs-all-btn').onclick = () => { $('logs-from').value = ''; $('logs-to').value = ''; logsViewer.run(); };
 
   let logEnabledValue = 1;
   let isAdminValue     = 0;
