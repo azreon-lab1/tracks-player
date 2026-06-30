@@ -163,6 +163,16 @@
     <div class="mode-hint" id="wakelock-hint"></div>
   </template>
 
+  <!-- Autoplay toggle — injected after the wake-lock toggle in the same slot -->
+  <template id="autoplay-toggle-template">
+    <hr class="toggle-divider" id="autoplay-divider">
+    <div class="mode-toggle" id="autoplay-toggle">
+      <button id="autoplay-on"  onclick="setAutoplay(true)"></button>
+      <button id="autoplay-off" onclick="setAutoplay(false)"></button>
+    </div>
+    <div class="mode-hint" id="autoplay-hint"></div>
+  </template>
+
 </div>
 <script src="config.js"></script>
 <script src="shared.js"></script>
@@ -183,6 +193,10 @@
     WAKELOCK_OFF_LABEL: 'Allow Auto-Lock',
     WAKELOCK_HINT_ON:   'Screen stays on while a track plays to avoid undesired pauses.',
     WAKELOCK_HINT_OFF:  'Your screen may lock during playback and stop it.',
+    AUTOPLAY_ON_LABEL:  'Autoplay',
+    AUTOPLAY_OFF_LABEL: 'Tap to Play',
+    AUTOPLAY_HINT_ON:   'A track starts playing as soon as you tap it.',
+    AUTOPLAY_HINT_OFF:  'Tapping a track only gets it ready — press play to start, including from the lock screen.',
   };
 
   const HEADER_IMAGE_URL      = '';  // page-specific banner; '' = use HEADER_IMAGE_DEFAULT in ui.js
@@ -198,6 +212,7 @@
     'my-reports-card',
     'mode-hint',
     'wakelock-hint',
+    'autoplay-hint',
     // 'mode-card-bottom',
     // 'mode-toggle',
   ];
@@ -208,6 +223,11 @@
   const wakeLockSupported = 'wakeLock' in navigator;
   let wakeLockEnabled = localStorage.getItem('ap_wakelock') === '1';
   let wakeLockSentinel = null;
+
+  // First-ever default comes from config.js; once the participant has used
+  // the toggle, their stored choice wins from then on.
+  const storedAutoplay = localStorage.getItem('ap_autoplay');
+  let autoplayOnTap = storedAutoplay === null ? AUTOPLAY_ON_TRACK_TAP : storedAutoplay === '1';
 
   if (!token) {
     const _tp = new URLSearchParams(location.search).get('track');
@@ -414,13 +434,13 @@
       setLoading(false);
       hasStartedPlaying = true;
       document.querySelectorAll('.track-item').forEach(d => d.style.pointerEvents = '');
-      audio.muted = false;
-      fadePlay('autoplay');
+      audio.muted = userMuted;
+      if (autoplayOnTap) fadePlay('autoplay');
     }, { once: true });
 
     audio.addEventListener('error', function onErr() {
       audio.removeEventListener('error', onErr);
-      audio.muted = false;
+      audio.muted = userMuted;
       $('btn-play').disabled = false;
       setLoading(false);
       document.querySelectorAll('.track-item').forEach(d => d.style.pointerEvents = '');
@@ -460,6 +480,13 @@
   const FADE_STEP_MS = 5;
   let fadeTimer  = null;
   let userVolume = 1;
+  // The participant's actual mute preference, independent of audio.muted's
+  // momentary state — audio.muted is also flipped internally on every track
+  // switch (muted-before-teardown, to avoid an audible click while tearing
+  // down the outgoing track), so it can't be read back as "what the user
+  // wants" once a new track loads. This persists across track switches;
+  // resets to false on a page refresh, same as userVolume.
+  let userMuted  = false;
 
   function fadePlay(source = 'button') {
     pendingPlaybackTrigger = source;
@@ -500,7 +527,7 @@
 
   $('volume-slider').oninput = function() { userVolume = parseFloat(this.value); audio.volume = userVolume; };
 
-  $('btn-volume').onclick = () => { audio.muted = !audio.muted; };
+  $('btn-volume').onclick = () => { audio.muted = userMuted = !audio.muted; };
 
   // 'volumechange' fires for both volume AND muted changes — using it as the
   // single source of truth for the icon means it stays correct even when
@@ -785,6 +812,11 @@
       slot.appendChild(wlTmpl.content.cloneNode(true));
       syncWakeLockUI();
     }
+    const apTmpl = $('autoplay-toggle-template');
+    if (apTmpl && slot) {
+      slot.appendChild(apTmpl.content.cloneNode(true));
+      syncAutoplayUI();
+    }
   }
 
   function setMode(mode) {
@@ -842,6 +874,23 @@
     $('wakelock-off').textContent = UI.WAKELOCK_OFF_LABEL;
     $('wakelock-on').textContent  = UI.WAKELOCK_ON_LABEL;
     if (hint) hint.textContent = wakeLockEnabled ? UI.WAKELOCK_HINT_ON : UI.WAKELOCK_HINT_OFF;
+  }
+
+  function setAutoplay(on) {
+    autoplayOnTap = on;
+    localStorage.setItem('ap_autoplay', on ? '1' : '0');
+    syncAutoplayUI();
+  }
+
+  function syncAutoplayUI() {
+    const toggle = $('autoplay-toggle');
+    const hint   = $('autoplay-hint');
+    if (!toggle) return;
+    $('autoplay-off').classList.toggle('active', !autoplayOnTap);
+    $('autoplay-on').classList.toggle('active',   autoplayOnTap);
+    $('autoplay-off').textContent = UI.AUTOPLAY_OFF_LABEL;
+    $('autoplay-on').textContent  = UI.AUTOPLAY_ON_LABEL;
+    if (hint) hint.textContent = autoplayOnTap ? UI.AUTOPLAY_HINT_ON : UI.AUTOPLAY_HINT_OFF;
   }
 
   let loadingDelayTimer = null;

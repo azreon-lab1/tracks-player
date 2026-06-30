@@ -19,6 +19,15 @@ const REPORTS_IN_PLAYER = true;
 // player.html — fade volume on play/pause to avoid an audible click/pop.
 const FADE_AUDIO_ACTIONS = true;
 
+// player.html — default for the "Autoplay" toggle (live in the player UI,
+// below Auto-Lock; user choice persists in localStorage ap_autoplay and wins
+// over this once set — this is only the first-ever default). true = tapping
+// a track plays it as soon as it's ready (current/original behaviour).
+// false = tapping a track only loads it (gets ready, Media Session/lock-screen
+// controls populated) without starting playback — lets the participant lock
+// the phone right after tapping and press play from the lock screen.
+const AUTOPLAY_ON_TRACK_TAP = true;
+
 // reports.html — iframe sandbox for the report viewer. true = allow-scripts
 // allow-same-origin (needed for in-page anchor nav, sticky nav, CDN scripts
 // inside reports; trade-off: a report's JS can reach the parent frame, so
