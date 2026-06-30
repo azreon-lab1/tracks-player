@@ -370,6 +370,18 @@
   let currentBlobUrl  = null;
   let fetchController = null;
 
+  // Some browsers throw instead of silently ignoring an unsupported Media
+  // Session action (the spec says they should just ignore it) — wrapping
+  // each setActionHandler call individually means one unsupported/buggy
+  // action type can't take down the others, or anything that runs after
+  // this block in playTrack(). Found live: a thrown 'seekbackward'
+  // registration on Brave/Android broke track playback entirely, since
+  // nothing downstream of it in playTrack() ran either.
+  function setMediaAction(action, handler) {
+    if (!('mediaSession' in navigator)) return;
+    try { navigator.mediaSession.setActionHandler(action, handler); } catch (e) {}
+  }
+
   function playTrack(track, el) {
     document.querySelectorAll('.track-item').forEach(d => d.classList.remove('active'));
     if (el) el.classList.add('active');
@@ -437,14 +449,15 @@
     }
 
     if ('mediaSession' in navigator) {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: track.title, artist: UI.PLATFORM_ARTIST, album: '',
-      });
-      navigator.mediaSession.setActionHandler('play',  () => { if (audio.paused)  fadePlay('media_session'); });
-      navigator.mediaSession.setActionHandler('pause', () => { if (!audio.paused) fadePause('media_session'); });
-      navigator.mediaSession.setActionHandler('stop',  () => { if (!audio.paused) fadePause('media_session'); });
-      navigator.mediaSession.setActionHandler('seekbackward',
-        RESTART_BUTTON_IN_MEDIA_CONTROLS ? () => restartTrack('media_session') : null);
+      try {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: track.title, artist: UI.PLATFORM_ARTIST, album: '',
+        });
+      } catch (e) {}
+      setMediaAction('play',  () => { if (audio.paused)  fadePlay('media_session'); });
+      setMediaAction('pause', () => { if (!audio.paused) fadePause('media_session'); });
+      setMediaAction('stop',  () => { if (!audio.paused) fadePause('media_session'); });
+      setMediaAction('seekbackward', RESTART_BUTTON_IN_MEDIA_CONTROLS ? () => restartTrack('media_session') : null);
     }
   }
 
