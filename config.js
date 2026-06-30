@@ -28,6 +28,17 @@ const FADE_AUDIO_ACTIONS = true;
 // the phone right after tapping and press play from the lock screen.
 const AUTOPLAY_ON_TRACK_TAP = true;
 
+// player.html — "Restart" button (seeks the current track back to position 0,
+// keeps playing/paused state as-is) in the in-app player controls, next to
+// Play/Pause. Independent of RESTART_BUTTON_IN_MEDIA_CONTROLS below — either,
+// both, or neither can be on.
+const RESTART_BUTTON_IN_PLAYER = true;
+
+// player.html — wires the same restart-to-zero behaviour to the OS/lock-screen
+// media controls' rewind action (navigator.mediaSession 'seekbackward').
+// Independent of RESTART_BUTTON_IN_PLAYER above.
+const RESTART_BUTTON_IN_MEDIA_CONTROLS = true;
+
 // reports.html — iframe sandbox for the report viewer. true = allow-scripts
 // allow-same-origin (needed for in-page anchor nav, sticky nav, CDN scripts
 // inside reports; trade-off: a report's JS can reach the parent frame, so
