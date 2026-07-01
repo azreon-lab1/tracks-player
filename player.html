@@ -191,6 +191,17 @@
     <div class="mode-hint" id="autoplay-hint"></div>
   </template>
 
+  <!-- Lock-screen rewind toggle — injected after the autoplay toggle when the
+       RESTART_BUTTON_IN_MEDIA_CONTROLS master flag is on -->
+  <template id="rewind-toggle-template">
+    <hr class="toggle-divider" id="rewind-divider">
+    <div class="mode-toggle" id="rewind-toggle">
+      <button id="rewind-on"  onclick="setMediaRewind(true)"></button>
+      <button id="rewind-off" onclick="setMediaRewind(false)"></button>
+    </div>
+    <div class="mode-hint" id="rewind-hint"></div>
+  </template>
+
 </div>
 <script src="config.js"></script>
 <script src="shared.js"></script>
@@ -215,6 +226,10 @@
     AUTOPLAY_OFF_LABEL: 'Tap to Play',
     AUTOPLAY_HINT_ON:   'A track starts playing as soon as you tap it.',
     AUTOPLAY_HINT_OFF:  'Tapping a track only gets it ready — press play to start, including from the lock screen.',
+    REWIND_ON_LABEL:    'Show Rewind',
+    REWIND_OFF_LABEL:   'Hide Rewind',
+    REWIND_HINT_ON:     'A restart button (⏮) appears in your phone\'s lock-screen media controls.',
+    REWIND_HINT_OFF:    'No restart button in the lock-screen media controls.',
   };
 
   const HEADER_IMAGE_URL      = '';  // page-specific banner; '' = use HEADER_IMAGE_DEFAULT in ui.js
@@ -231,6 +246,7 @@
     'mode-hint',
     'wakelock-hint',
     'autoplay-hint',
+    'rewind-hint',
     // 'mode-card-bottom',
     // 'mode-toggle',
   ];
@@ -246,6 +262,13 @@
   // the toggle, their stored choice wins from then on.
   const storedAutoplay = localStorage.getItem('ap_autoplay');
   let autoplayOnTap = storedAutoplay === null ? AUTOPLAY_ON_TRACK_TAP : storedAutoplay === '1';
+
+  // User preference for the lock-screen rewind (⏮) button. Only meaningful
+  // when the RESTART_BUTTON_IN_MEDIA_CONTROLS master flag is on — that flag
+  // decides whether the toggle is even offered; this decides show/hide within
+  // it. First-run default from MEDIA_REWIND_DEFAULT, then the stored choice.
+  const storedMediaRewind = localStorage.getItem('ap_media_rewind');
+  let mediaRewindEnabled = storedMediaRewind === null ? MEDIA_REWIND_DEFAULT : storedMediaRewind === '1';
 
   if (!token) {
     const _tp = new URLSearchParams(location.search).get('track');
@@ -263,7 +286,7 @@
   //   RECONNECTING    — watchdog-triggered recovery in progress; suppresses
   //                      the pause/play the forced reload inherently fires
   //                      from being logged as a real user pause/resume.
-  const PlayerState = { NORMAL: 'normal', SWITCHING_BLOB: 'switching-blob', RECONNECTING: 'reconnecting' };
+  const PlayerState = { NORMAL: 'normal', SWITCHING_BLOB: 'switching-blob', RECONNECTING: 'reconnecting', ACTIVATING: 'activating' };
   let internalState = PlayerState.NORMAL;
 
   // Set immediately before every call WE make to fadePlay()/fadePause() (the
@@ -289,6 +312,25 @@
 
   const audio = new Audio();
   audio.preload = 'auto';
+
+  // Tap-to-play "session activation" plays this intro clip on its OWN element
+  // to grab audio focus and surface the lock-screen controls, without ever
+  // playing/seeking the real track. Audible (Android needs real sound) but an
+  // intentional intro, not the track's opening.
+  const introClip = new Audio('intro-clip.mp3');
+  introClip.preload = 'auto';
+  // Warm it up: a cold element's FIRST play doesn't reliably grab audio focus.
+  // Muted autoplay is allowed without a gesture, so prime it silently at load.
+  (function primeIntroClip() {
+    try {
+      introClip.muted = true;
+      introClip.play().then(() => {
+        introClip.pause();
+        introClip.currentTime = 0;
+        introClip.muted = false;
+      }).catch(() => { introClip.muted = false; });
+    } catch (e) { introClip.muted = false; }
+  })();
 
   document.title                    = UI.PAGE_TITLE;
   $('now-playing').textContent      = UI.NOW_PLAYING_IDLE;
@@ -370,18 +412,6 @@
   let currentBlobUrl  = null;
   let fetchController = null;
 
-  // Some browsers throw instead of silently ignoring an unsupported Media
-  // Session action (the spec says they should just ignore it) — wrapping
-  // each setActionHandler call individually means one unsupported/buggy
-  // action type can't take down the others, or anything that runs after
-  // this block in playTrack(). Found live: a thrown 'seekbackward'
-  // registration on Brave/Android broke track playback entirely, since
-  // nothing downstream of it in playTrack() ran either.
-  function setMediaAction(action, handler) {
-    if (!('mediaSession' in navigator)) return;
-    try { navigator.mediaSession.setActionHandler(action, handler); } catch (e) {}
-  }
-
   function playTrack(track, el) {
     document.querySelectorAll('.track-item').forEach(d => d.classList.remove('active'));
     if (el) el.classList.add('active');
@@ -448,38 +478,77 @@
       hybridBlobSwitch(audioUrl, track);
     }
 
-    if ('mediaSession' in navigator) {
-      try {
-        navigator.mediaSession.metadata = new MediaMetadata({
-          title: track.title, artist: UI.PLATFORM_ARTIST, album: '',
-        });
-      } catch (e) {}
-      setMediaAction('play',  () => { if (audio.paused)  fadePlay('media_session'); });
-      setMediaAction('pause', () => { if (!audio.paused) fadePause('media_session'); });
-      setMediaAction('stop',  () => { if (!audio.paused) fadePause('media_session'); });
-      setMediaAction('seekbackward', RESTART_BUTTON_IN_MEDIA_CONTROLS ? () => restartTrack('media_session') : null);
-    }
+    MediaControls.setTrack(track);
+  }
+
+  // The track is loaded and ready: drop the loading indicator, re-enable the
+  // controls, restore tap-ability of the list. Shared by every "we're ready
+  // now" path so they stay identical.
+  function finishLoadingUI() {
+    $('btn-play').disabled    = false;
+    $('btn-restart').disabled = false;
+    setLoading(false);
+    document.querySelectorAll('.track-item').forEach(d => d.style.pointerEvents = '');
+  }
+
+  // Session activation (tap-to-play only): the OS won't surface the lock-screen
+  // controls for a track that has never actually played. We briefly play the
+  // intro clip on its OWN element to grab audio focus — the REAL track is never
+  // played or seeked here, so there's no blip on it and no synthetic events on
+  // the main element. Audible (Android needs real sound) at MEDIA_ACTIVATION_
+  // VOLUME for MEDIA_ACTIVATION_HOLD_MS. onDone() runs once; the real track is
+  // already loaded, paused, at 0 (from playTrack), ready for a genuine start.
+  function activateMediaSession(onDone) {
+    if (!MediaControls.available || !currentTrack || !introClip) { audio.muted = userMuted; onDone(); return; }
+
+    internalState = PlayerState.ACTIVATING;
+    MediaControls.setPlaybackState('paused');
+    audio.muted = userMuted;   // real track stays at the user's volume, untouched
+
+    let settled = false;
+    const settle = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(safety);
+      try { introClip.pause(); } catch (e) {}
+      try { introClip.currentTime = 0; } catch (e) {}   // reset the intro for next time
+      internalState = PlayerState.NORMAL;
+      MediaControls.setPlaybackState('paused');
+      MediaControls.sync();             // assert the paused session at the real track's 0
+      onDone();
+    };
+
+    // Deterministic: wait for play() to RESOLVE, then a fixed hold, then pause.
+    // Safety timeout covers a play() that neither resolves nor rejects.
+    const safety = setTimeout(settle, MEDIA_ACTIVATION_HOLD_MS + 1500);
+    try { introClip.currentTime = 0; } catch (e) {}
+    introClip.volume = MEDIA_ACTIVATION_VOLUME;   // quiet, audible intro
+    introClip.play()
+      .then(() => setTimeout(settle, MEDIA_ACTIVATION_HOLD_MS))
+      .catch(settle);
   }
 
   function startInitialPlayback() {
     audio.addEventListener('canplaythrough', function onCanPlay() {
       audio.removeEventListener('canplaythrough', onCanPlay);
-      $('btn-play').disabled = false;
-      $('btn-restart').disabled = false;
-      setLoading(false);
       hasStartedPlaying = true;
-      document.querySelectorAll('.track-item').forEach(d => d.style.pointerEvents = '');
-      audio.muted = userMuted;
-      if (autoplayOnTap) fadePlay('autoplay');
+
+      audio.muted = userMuted;   // undo the load-time mute either way
+      if (autoplayOnTap) {
+        finishLoadingUI();
+        fadePlay('autoplay');
+      } else {
+        // Tap-to-play: keep the loading indicator up while a brief, quiet
+        // activation grabs audio focus to surface the lock-screen controls,
+        // then finish with the track paused at 0 — ready for a real start.
+        activateMediaSession(finishLoadingUI);
+      }
     }, { once: true });
 
     audio.addEventListener('error', function onErr() {
       audio.removeEventListener('error', onErr);
       audio.muted = userMuted;
-      $('btn-play').disabled = false;
-      $('btn-restart').disabled = false;
-      setLoading(false);
-      document.querySelectorAll('.track-item').forEach(d => d.style.pointerEvents = '');
+      finishLoadingUI();
     }, { once: true });
   }
 
@@ -572,7 +641,7 @@
     const fromPositionMs = Math.round((audio.currentTime || 0) * 1000);
     audio.currentTime = 0;
     logEvent('seek', { fromPositionMs, ...eventDiagnostics({ trigger: source }) });
-    updateMediaSessionPosition(audio.duration, audio.currentTime);
+    MediaControls.sync();
   }
 
   if (RESTART_BUTTON_IN_PLAYER) {
@@ -606,24 +675,97 @@
     $('progress-played').style.width = pct + '%';
     $('progress-thumb').style.left   = pct + '%';
     $('player-time').textContent     = `${fmt(cur)} / ${fmt(dur)}`;
-    updateMediaSessionPosition(dur, cur);
+    MediaControls.sync();
   }
 
-  // Keeps the OS lock-screen/notification scrubber and playback state
-  // explicitly in sync, rather than relying entirely on the browser to infer
-  // it from the <audio> element. Some browsers are stricter than others
-  // about redrawing/keeping a media notification alive without this — wrapped
-  // in try/catch since setPositionState throws if position is ever fractionally
-  // past duration (rounding at the very end of a track).
-  function updateMediaSessionPosition(dur, cur) {
-    if (!('mediaSession' in navigator) || !currentTrack) return;
-    navigator.mediaSession.playbackState = audio.paused ? 'paused' : 'playing';
-    try {
-      navigator.mediaSession.setPositionState({
-        duration: dur, playbackRate: audio.playbackRate, position: Math.min(cur, dur),
-      });
-    } catch (e) {}
-  }
+  // ── Media Session (OS lock-screen / notification controls) ─────────────
+  // One owner for everything the operating system shows and routes back:
+  // the play/pause/stop/rewind buttons, the now-playing card (title +
+  // artwork), and the scrubber position/playback state. Three concerns,
+  // deliberately separated:
+  //   init()      — registers the action handlers ONCE at startup. They close
+  //                 over the stable `audio` element + fade helpers, so they
+  //                 never change between tracks and never need re-registering.
+  //                 Crucially this keeps setActionHandler OUT of playTrack()'s
+  //                 load path — registering it interleaved with audio.load()
+  //                 on every tap was the suspected Brave-breakage point.
+  //   setTrack()  — per-track: just the now-playing card (title + artwork).
+  //   sync()      — the single writer of playbackState + scrubber position.
+  // Every browser call is individually wrapped: some browsers throw on an
+  // unsupported action/position instead of ignoring it (spec says ignore),
+  // and one such throw must never take down the others or anything downstream.
+  const MediaControls = {
+    available: 'mediaSession' in navigator,
+
+    init() {
+      if (!this.available) return;
+      // playbackState is set SYNCHRONOUSLY the instant the OS routes the press
+      // to us, before anything async.
+      //
+      // The pause/stop paths deliberately call audio.pause() DIRECTLY rather
+      // than through fadePause(): the fade runs on a setInterval, and timers
+      // are throttled/frozen while the screen is locked — so the actual pause
+      // fires late or erratically and Brave drops the lock-screen notification
+      // in the gap. (In-app pause with the screen on works precisely because
+      // the timers run normally there.) A lock-screen pause has no audible
+      // click to smooth over anyway. fadePlay on resume is fine — the screen
+      // is unlocking/active when you resume, and resume never had the issue.
+      this._set('play',  () => { if (audio.paused)  { this.setPlaybackState('playing'); fadePlay('media_session'); } });
+      this._set('pause', () => { if (!audio.paused) { this.setPlaybackState('paused');  pendingPlaybackTrigger = 'media_session'; audio.pause(); } });
+      this._set('stop',  () => { if (!audio.paused) { this.setPlaybackState('paused');  pendingPlaybackTrigger = 'media_session'; audio.pause(); } });
+      // The ⏮ rewind action is registered separately (and can be flipped at
+      // runtime by the user's "Show/Hide Rewind" toggle) — see setRewindEnabled.
+      this.setRewindEnabled(mediaRewindEnabled);
+    },
+
+    // Registers or removes the lock-screen rewind (⏮) handler. The master
+    // config flag is enforced here, so callers just pass the user's choice:
+    // the button only ever exists when BOTH the flag is on and the user wants
+    // it. 'previoustrack' (⏮) rather than 'seekbackward' (⏪) because the OS
+    // renders the prev-track control reliably as a button; semantically here
+    // it means "restart current track to 0".
+    setRewindEnabled(on) {
+      if (!this.available) return;
+      this._set('previoustrack',
+        (RESTART_BUTTON_IN_MEDIA_CONTROLS && on) ? () => restartTrack('media_session') : null);
+    },
+
+    setTrack(track) {
+      if (!this.available) return;
+      try {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title:   track.title,
+          artist:  UI.PLATFORM_ARTIST,
+          album:   '',
+          // Per-track artwork if the backend ever supplies it, else the
+          // configurable platform default from config.js.
+          artwork: (track.artwork && track.artwork.length) ? track.artwork : MEDIA_ARTWORK,
+        });
+      } catch (e) {}
+    },
+
+    sync() {
+      if (!this.available || !currentTrack) return;
+      try { navigator.mediaSession.playbackState = audio.paused ? 'paused' : 'playing'; } catch (e) {}
+      const dur = audio.duration, cur = audio.currentTime;
+      if (!isFinite(dur) || dur <= 0) return;
+      try {
+        navigator.mediaSession.setPositionState({
+          duration: dur, playbackRate: audio.playbackRate || 1, position: Math.min(cur, dur),
+        });
+      } catch (e) {}
+    },
+
+    setPlaybackState(state) {
+      if (!this.available) return;
+      try { navigator.mediaSession.playbackState = state; } catch (e) {}
+    },
+
+    _set(action, handler) {
+      try { navigator.mediaSession.setActionHandler(action, handler); } catch (e) {}
+    },
+  };
+  MediaControls.init();
 
   function updateBuffered() {
     const dur = audio.duration;
@@ -651,10 +793,16 @@
     $('progress-played').style.width  = '0%';
     $('progress-thumb').style.left    = '0%';
     document.querySelectorAll('.track-item').forEach(d => d.style.pointerEvents = '');
-    updateMediaSessionPosition(audio.duration, audio.currentTime);
+    MediaControls.sync();
   }
 
   audio.addEventListener('play', () => {
+    // Defensive: during tap-to-play session activation the main element isn't
+    // played (a separate intro clip is), so this normally won't fire — but if
+    // anything ever does trigger it mid-activation, suppress it so no 'start'
+    // log, icon flip, or heartbeat/watchdog/wakelock leaks out. Keeps the logs
+    // clean no matter what; the real, logged start happens on the user's play.
+    if (internalState === PlayerState.ACTIVATING) return;
     showPause(true);
     // pendingPlaybackTrigger is set by fadePlay() immediately before it calls
     // audio.play() — if it's still null here, nothing we did caused this
@@ -669,7 +817,7 @@
     startHeartbeat();
     resetWatchdog();
     acquireWakeLock();
-    updateMediaSessionPosition(audio.duration, audio.currentTime);
+    MediaControls.sync();
   });
 
   audio.addEventListener('timeupdate', () => {
@@ -678,7 +826,7 @@
     // (seen on Safari without readyState ever dropping) left the loading
     // indicator on with nothing left to clear it (it's only ever cleared by
     // 'playing', which doesn't fire again if Safari never paused anything).
-    if (!audio.paused) setLoading(false);
+    if (!audio.paused && internalState !== PlayerState.ACTIVATING) setLoading(false);
     if (wasPlaying && internalState !== PlayerState.SWITCHING_BLOB && isFinite(audio.duration) && audio.duration > 0
         && audio.currentTime >= audio.duration - 0.25) {
       handleTrackEnd();
@@ -688,6 +836,8 @@
   audio.addEventListener('ended', handleTrackEnd);
 
   audio.addEventListener('pause', () => {
+    // Same defensive suppression as 'play' above — no stray events during activation.
+    if (internalState === PlayerState.ACTIVATING) return;
     showPause(false);
     // Same logic as 'play' above — read+clear unconditionally, at the top,
     // so a stale value never bleeds into a later, unrelated pause/play.
@@ -701,7 +851,7 @@
     stopHeartbeat();
     stopWatchdog();
     releaseWakeLock();
-    updateMediaSessionPosition(audio.duration, audio.currentTime);
+    MediaControls.sync();
   });
 
   // Persistent native error listener — separate from the one-time listener
@@ -746,7 +896,7 @@
   }
 
   audio.addEventListener('waiting', () => { if (!audio.ended) setLoading(true); });
-  audio.addEventListener('playing', () => setLoading(false));
+  audio.addEventListener('playing', () => { if (internalState !== PlayerState.ACTIVATING) setLoading(false); });
   // 'stalled' is purely advisory in the spec — browsers (Safari especially)
   // fire it whenever a fetch attempt pauses even briefly, including during
   // benign ahead-of-playback buffering bursts where data keeps arriving just
@@ -893,6 +1043,13 @@
       slot.appendChild(apTmpl.content.cloneNode(true));
       syncAutoplayUI();
     }
+    // Only offered when the master flag is on AND the platform actually has a
+    // media session to attach the rewind action to.
+    const rwTmpl = $('rewind-toggle-template');
+    if (rwTmpl && slot && RESTART_BUTTON_IN_MEDIA_CONTROLS && ('mediaSession' in navigator)) {
+      slot.appendChild(rwTmpl.content.cloneNode(true));
+      syncMediaRewindUI();
+    }
   }
 
   function setMode(mode) {
@@ -967,6 +1124,24 @@
     $('autoplay-off').textContent = UI.AUTOPLAY_OFF_LABEL;
     $('autoplay-on').textContent  = UI.AUTOPLAY_ON_LABEL;
     if (hint) hint.textContent = autoplayOnTap ? UI.AUTOPLAY_HINT_ON : UI.AUTOPLAY_HINT_OFF;
+  }
+
+  function setMediaRewind(on) {
+    mediaRewindEnabled = on;
+    localStorage.setItem('ap_media_rewind', on ? '1' : '0');
+    syncMediaRewindUI();
+    MediaControls.setRewindEnabled(on);   // register/unregister the ⏮ handler live
+  }
+
+  function syncMediaRewindUI() {
+    const toggle = $('rewind-toggle');
+    const hint   = $('rewind-hint');
+    if (!toggle) return;
+    $('rewind-off').classList.toggle('active', !mediaRewindEnabled);
+    $('rewind-on').classList.toggle('active',   mediaRewindEnabled);
+    $('rewind-off').textContent = UI.REWIND_OFF_LABEL;
+    $('rewind-on').textContent  = UI.REWIND_ON_LABEL;
+    if (hint) hint.textContent = mediaRewindEnabled ? UI.REWIND_HINT_ON : UI.REWIND_HINT_OFF;
   }
 
   let loadingDelayTimer = null;

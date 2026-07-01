@@ -34,10 +34,44 @@ const AUTOPLAY_ON_TRACK_TAP = true;
 // both, or neither can be on.
 const RESTART_BUTTON_IN_PLAYER = true;
 
-// player.html — wires the same restart-to-zero behaviour to the OS/lock-screen
-// media controls' rewind action (navigator.mediaSession 'seekbackward').
-// Independent of RESTART_BUTTON_IN_PLAYER above.
+// player.html — MASTER switch for the lock-screen rewind (⏮) capability.
+// When true, the platform offers users a "Show/Hide Rewind" toggle in the
+// player and wires the restart-to-zero behaviour to the OS media controls'
+// previous-track button (navigator.mediaSession 'previoustrack' — chosen over
+// 'seekbackward'/⏪ because the OS renders it reliably as a button). When
+// false, no toggle and no button exist at all. Independent of
+// RESTART_BUTTON_IN_PLAYER. The per-user show/hide default is MEDIA_REWIND_DEFAULT.
 const RESTART_BUTTON_IN_MEDIA_CONTROLS = true;
+
+// player.html — first-run default for the per-user "Show/Hide Rewind" toggle
+// (persisted in localStorage ap_media_rewind once they choose). Only has any
+// effect while RESTART_BUTTON_IN_MEDIA_CONTROLS above is true.
+const MEDIA_REWIND_DEFAULT = true;
+
+// player.html — default artwork shown on the OS lock-screen / notification
+// media card (navigator.mediaSession metadata). One place to manage the
+// image; swap the file or add more sizes here. Each entry: { src, sizes,
+// type }. `src` is resolved relative to the page, so a repo-hosted file just
+// works on both the LAN test server and GitHub Pages. Future: when the
+// backend returns a per-track image, MediaControls.setTrack() already prefers
+// a track's own `artwork` array over this default.
+const MEDIA_ARTWORK = [
+  { src: 'media-artwork.png', sizes: '235x235', type: 'image/png' },
+];
+
+// player.html — tap-to-play "session activation". To surface the lock-screen
+// controls for a track the user hasn't played yet, we briefly play the intro
+// clip (intro-clip.mp3) on its own element, then stop. The real track is never
+// touched. Android only grants the media notification to playback that produces
+// REAL audible output (muted/volume-0/silent-clip all fail or flake), so the
+// intro is audible — but quiet and short, and an intentional intro rather than
+// the track's opening.
+//   HOLD_MS — how long the intro plays before pausing (ms). 150/300 were
+//             intermittent on Android; 600 was the first reliable value.
+//   VOLUME  — intro loudness, 0..1 (audio.volume is hard-capped at 1). Must be
+//             > 0 to hold audio focus; keep low so it's unobtrusive.
+const MEDIA_ACTIVATION_HOLD_MS = 600;
+const MEDIA_ACTIVATION_VOLUME  = 0.3;
 
 // reports.html — iframe sandbox for the report viewer. true = allow-scripts
 // allow-same-origin (needed for in-page anchor nav, sticky nav, CDN scripts
