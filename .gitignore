@@ -1,3 +1,13 @@
 
 .wrangler
 .DS_Store
+
+# Internal docs & Claude memory live in the PRIVATE tracks-player-docs repo.
+# This is a public repo (GitHub Pages), so these must never be committed here.
+# `.claude` is a directory junction and `CLAUDE.md` a hardlink into that repo.
+.claude/
+/CLAUDE.md
+/plan-*.md
+/task-*.md
+/visibilitychange-fix.md
+/README.md
