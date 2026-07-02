@@ -19,6 +19,16 @@ const REPORTS_IN_PLAYER = true;
 // player.html — fade volume on play/pause to avoid an audible click/pop.
 const FADE_AUDIO_ACTIONS = true;
 
+// player.html — presentation of the "Player Settings" card (Mode / Auto-Lock /
+// Autoplay / Rewind toggles) when PLAYER_SETTINGS_CARD_POSITION is 'bottom'.
+// true  = a collapsible card, titled "Player Settings", closed by default —
+//         cleaner initial view; the participant opens it only to change a setting.
+// false = an always-open card (still titled) with every toggle visible at once.
+// No effect when the card position is 'player' (toggles live inside the player
+// card and this collapse behaviour doesn't apply). Position itself is set by
+// PLAYER_SETTINGS_CARD_POSITION in player.html.
+const PLAYER_SETTINGS_EXPANDABLE = true;
+
 // player.html — default for the "Autoplay" toggle (live in the player UI,
 // below Auto-Lock; user choice persists in localStorage ap_autoplay and wins
 // over this once set — this is only the first-ever default). true = tapping

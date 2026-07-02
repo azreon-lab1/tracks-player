@@ -90,8 +90,10 @@
     .mode-toggle button { flex: 1; padding: 8px 12px; background: #fff; border: none; font-size: .82rem; color: var(--muted); cursor: pointer; transition: background .15s, color .15s; }
     .mode-toggle button.active { background: var(--primary); color: #fff; font-weight: 600; }
     .mode-toggle button:not(.active):hover { background: var(--track-hover); }
+    .setting-name { font-size: .78rem; font-weight: 600; color: var(--muted); text-align: center; margin-bottom: 6px; }
     .mode-hint { font-size: .72rem; color: var(--hint); text-align: center; margin-top: 6px; }
     .toggle-divider { border: none; border-top: 1px solid #e8e8e8; margin: 14px 0 12px; }
+    #player-settings-title { font-size: 1.1rem; color: #333; margin-bottom: 14px; }
   </style>
 </head>
 <body>
@@ -146,14 +148,15 @@
           </button>
         </div>
         <div class="loading-label" id="loading-label">Loading…</div>
-        <div id="mode-slot-player"></div>
+        <div id="settings-slot-player"></div>
       </div>
     </div>
     <div class="card" id="track-list-card">
       <div id="track-list"></div>
     </div>
-    <div class="card" id="mode-card-bottom">
-      <div id="mode-slot-bottom"></div>
+    <div class="card" id="player-settings-card">
+      <h2 id="player-settings-title"></h2>
+      <div id="settings-slot-bottom"></div>
     </div>
     <div class="card" id="my-reports-card" style="display:none">
       <h2>My Reports</h2>
@@ -162,45 +165,9 @@
     <button class="secondary" id="reports-btn" style="display:none">Management</button>
   </div>
 
-  <!-- Mode toggle template — injected into the chosen slot on load -->
-  <template id="mode-toggle-template">
-    <div class="mode-toggle" id="mode-toggle">
-      <button id="mode-stream" onclick="setMode('stream')">Stream</button>
-      <button id="mode-blob"   onclick="setMode('blob')">Preload</button>
-    </div>
-    <div class="mode-hint" id="mode-hint"></div>
-  </template>
-
-  <!-- Wake-lock toggle — injected after the mode toggle in the same slot -->
-  <template id="wakelock-toggle-template">
-    <hr class="toggle-divider" id="wakelock-divider">
-    <div class="mode-toggle" id="wakelock-toggle">
-      <button id="wakelock-off" onclick="setWakeLock(false)"></button>
-      <button id="wakelock-on"  onclick="setWakeLock(true)"></button>
-    </div>
-    <div class="mode-hint" id="wakelock-hint"></div>
-  </template>
-
-  <!-- Autoplay toggle — injected after the wake-lock toggle in the same slot -->
-  <template id="autoplay-toggle-template">
-    <hr class="toggle-divider" id="autoplay-divider">
-    <div class="mode-toggle" id="autoplay-toggle">
-      <button id="autoplay-on"  onclick="setAutoplay(true)"></button>
-      <button id="autoplay-off" onclick="setAutoplay(false)"></button>
-    </div>
-    <div class="mode-hint" id="autoplay-hint"></div>
-  </template>
-
-  <!-- Lock-screen rewind toggle — injected after the autoplay toggle when the
-       RESTART_BUTTON_IN_MEDIA_CONTROLS master flag is on -->
-  <template id="rewind-toggle-template">
-    <hr class="toggle-divider" id="rewind-divider">
-    <div class="mode-toggle" id="rewind-toggle">
-      <button id="rewind-on"  onclick="setMediaRewind(true)"></button>
-      <button id="rewind-off" onclick="setMediaRewind(false)"></button>
-    </div>
-    <div class="mode-hint" id="rewind-hint"></div>
-  </template>
+  <!-- Player Settings toggles (Mode / Auto-Lock / Autoplay / Rewind) are built
+       from the SETTINGS registry in JS by renderSettings() — no per-toggle
+       markup here. See renderSettings()/syncSetting() in the script below. -->
 
 </div>
 <script src="config.js"></script>
@@ -214,22 +181,28 @@
     NO_TRACKS_MSG:      'No tracks available.',
     TRACK_NOT_AVAILABLE:'That track isn’t available on your account.',
     LOADING_TEXT:       'Loading…',
-    MODE_BLOB_LABEL:    'Preload',
-    MODE_STREAM_LABEL:  'Stream',
-    MODE_BLOB_HINT:     'Downloads the full track first, then plays. Works offline once loaded.',
-    MODE_STREAM_HINT:   'Plays immediately, streams as you listen. Needs a connection throughout.',
+    PLAYER_SETTINGS_TITLE: 'Player Settings',
+    // Per-toggle name labels (small heading above each toggle)
+    SETTING_NAME_MODE:     'Download Mode',
+    SETTING_NAME_WAKELOCK: 'Screen Lock',
+    SETTING_NAME_AUTOPLAY: 'Playback Start Mode',
+    SETTING_NAME_REWIND:   'Restart Media Button',
+    MODE_BLOB_LABEL:    'Buffered',
+    MODE_STREAM_LABEL:  'Streaming',
+    MODE_BLOB_HINT:     'Loads the full track first, then plays (works offline once loaded).',
+    MODE_STREAM_HINT:   'Loads up as you go (needs a connection till the end).',
     WAKELOCK_ON_LABEL:  'Keep Screen On',
     WAKELOCK_OFF_LABEL: 'Allow Auto-Lock',
-    WAKELOCK_HINT_ON:   'Screen stays on while a track plays to avoid undesired pauses.',
-    WAKELOCK_HINT_OFF:  'Your screen may lock during playback and stop it.',
+    WAKELOCK_HINT_ON:   'Keeps the screen on during playback (avoids auto-lock/pause).',
+    WAKELOCK_HINT_OFF:  'The device manages auto-lock (it may pause playback).',
     AUTOPLAY_ON_LABEL:  'Autoplay',
-    AUTOPLAY_OFF_LABEL: 'Tap to Play',
-    AUTOPLAY_HINT_ON:   'A track starts playing as soon as you tap it.',
-    AUTOPLAY_HINT_OFF:  'Tapping a track only gets it ready — press play to start, including from the lock screen.',
-    REWIND_ON_LABEL:    'Show Rewind',
-    REWIND_OFF_LABEL:   'Hide Rewind',
-    REWIND_HINT_ON:     'A restart button (⏮) appears in your phone\'s lock-screen media controls.',
-    REWIND_HINT_OFF:    'No restart button in the lock-screen media controls.',
+    AUTOPLAY_OFF_LABEL: 'Press Play to start',
+    AUTOPLAY_HINT_ON:   'After being chosen, the track starts playing.',
+    AUTOPLAY_HINT_OFF:  'The track gets ready and waits for play to be pressed (even from media controls).',
+    REWIND_ON_LABEL:    'Show Button',
+    REWIND_OFF_LABEL:   'Hide Button',
+    REWIND_HINT_ON:     'Adds a restart button (⏮) in the media controls.',
+    REWIND_HINT_OFF:    'Hides the Restart button.',
   };
 
   const HEADER_IMAGE_URL      = '';  // page-specific banner; '' = use HEADER_IMAGE_DEFAULT in ui.js
@@ -237,18 +210,25 @@
   const HEADER_IMAGE_FILTER   = 'brightness(0) invert(1) drop-shadow(0 3px 4px rgba(0,0,0,.35))';  // white recolor (matching the default) + a soft shadow that follows each letter's shape
 
   const DEFAULT_MODE          = 'stream';
-  const MODE_TOGGLE_POSITION  = 'bottom';
+  // Where the whole Player Settings block lives: 'bottom' = its own card below
+  // the track list (titled "Player Settings"; collapse controlled by config.js
+  // PLAYER_SETTINGS_EXPANDABLE); 'player' = inline inside the player card, no
+  // separate card/title. Governs Mode + Auto-Lock + Autoplay + Rewind together.
+  const PLAYER_SETTINGS_CARD_POSITION = 'bottom';
   // SINGLE_TRACK_HIDES_LIST, REPORTS_IN_PLAYER, FADE_AUDIO_ACTIONS now live in config.js
   const SINGLE_TRACK_HIDE = [
     'track-list-card',
     'reports-btn',
     'my-reports-card',
+    'mode-name',
+    'wakelock-name',
+    'autoplay-name',
+    'rewind-name',
     'mode-hint',
     'wakelock-hint',
     'autoplay-hint',
     'rewind-hint',
-    // 'mode-card-bottom',
-    // 'mode-toggle',
+    // 'player-settings-card',   // uncomment to hide the whole settings card in ?track= view
   ];
 
   let activeMode = localStorage.getItem('ap_mode') || DEFAULT_MODE;
@@ -337,8 +317,43 @@
   $('loading-label').textContent    = UI.LOADING_TEXT;
   $('logout-btn').textContent       = UI.LOGOUT_BTN;
   document.querySelector('.startup-label').textContent = UI.LOADING_TEXT;
-  injectModeToggle();
-  syncModeUI();
+
+  // ── Player Settings registry ───────────────────────────────────────────
+  // One registry drives every toggle in the Player Settings card. Each entry is
+  // a two-option switch: option `a` (left button) and `b` (right button), each
+  // with a live label + hint getter. `get()` returns the current value; clicking
+  // a button calls `set(value)` — the existing setters (setMode/setWakeLock/…),
+  // which keep all their side effects (persistence, wake-lock acquire/release,
+  // media-handler (un)registration). `gate()` (optional) — when it returns false
+  // the toggle isn't rendered at all (unsupported feature, or not user-facing).
+  // Element ids derive from `key` (`${key}-toggle` / `${key}-hint`) so the
+  // SINGLE_TRACK_HIDE list keeps matching (mode-hint, wakelock-hint, …). Defined
+  // here (before renderSettings() runs) so the const isn't in its temporal dead
+  // zone when the init call below reaches it; the setters it references are
+  // hoisted function declarations, available regardless of source order.
+  const SETTINGS = [
+    { key: 'mode', name: () => UI.SETTING_NAME_MODE,
+      a: { value: 'stream', label: () => UI.MODE_STREAM_LABEL, hint: () => UI.MODE_STREAM_HINT },
+      b: { value: 'blob',   label: () => UI.MODE_BLOB_LABEL,   hint: () => UI.MODE_BLOB_HINT },
+      get: () => activeMode, set: setMode,
+      gate: () => activeMode !== 'hybrid' },   // hybrid isn't a user-facing mode
+    { key: 'wakelock', name: () => UI.SETTING_NAME_WAKELOCK,
+      a: { value: false, label: () => UI.WAKELOCK_OFF_LABEL, hint: () => UI.WAKELOCK_HINT_OFF },
+      b: { value: true,  label: () => UI.WAKELOCK_ON_LABEL,  hint: () => UI.WAKELOCK_HINT_ON },
+      get: () => wakeLockEnabled, set: setWakeLock,
+      gate: () => wakeLockSupported },
+    { key: 'autoplay', name: () => UI.SETTING_NAME_AUTOPLAY,
+      a: { value: true,  label: () => UI.AUTOPLAY_ON_LABEL,  hint: () => UI.AUTOPLAY_HINT_ON },
+      b: { value: false, label: () => UI.AUTOPLAY_OFF_LABEL, hint: () => UI.AUTOPLAY_HINT_OFF },
+      get: () => autoplayOnTap, set: setAutoplay },
+    { key: 'rewind', name: () => UI.SETTING_NAME_REWIND,
+      a: { value: true,  label: () => UI.REWIND_ON_LABEL,  hint: () => UI.REWIND_HINT_ON },
+      b: { value: false, label: () => UI.REWIND_OFF_LABEL, hint: () => UI.REWIND_HINT_OFF },
+      get: () => mediaRewindEnabled, set: setMediaRewind,
+      gate: () => RESTART_BUTTON_IN_MEDIA_CONTROLS && ('mediaSession' in navigator) },
+  ];
+
+  renderSettings();
 
   loadPlayer();
 
@@ -375,7 +390,7 @@
     list.innerHTML = '';
     if (!data.tracks || data.tracks.length === 0) {
       list.innerHTML = `<p style="color:var(--text);padding:14px;text-align:center">${UI.NO_TRACKS_MSG}</p>`;
-      const modeCard = $('mode-card-bottom'); if (modeCard) modeCard.style.display = 'none';
+      const settingsCard = $('player-settings-card'); if (settingsCard) settingsCard.style.display = 'none';
       return;
     }
     data.tracks.forEach(track => {
@@ -632,7 +647,7 @@
 
   // Seeks back to 0, leaving play/pause state exactly as it was — used by
   // both the in-app Restart button and (if RESTART_BUTTON_IN_MEDIA_CONTROLS)
-  // the OS/lock-screen 'seekbackward' action. Logged the same way as any
+  // the OS/lock-screen 'previoustrack' (⏮) action. Logged the same way as any
   // other seek (progress-bar click): same 'seek' event type, same tier rules
   // apply (always disqualifies STRICT/LENIENT; backward-only so it never
   // disqualifies RESUMED, same as seeking back to anywhere already heard).
@@ -1022,60 +1037,86 @@
     $('icon-pause').style.display = on ? ''     : 'none';
   }
 
-  // ── Playback mode toggle ──────────────────────────────────────────────
-  function injectModeToggle() {
-    const tmpl = $('mode-toggle-template');
-    const slot = MODE_TOGGLE_POSITION === 'player' ? $('mode-slot-player') : $('mode-slot-bottom');
-    if (tmpl && slot) slot.appendChild(tmpl.content.cloneNode(true));
-    if (MODE_TOGGLE_POSITION === 'player') {
-      const bottomCard = $('mode-card-bottom');
-      if (bottomCard) bottomCard.style.display = 'none';
-      const t = $('mode-toggle');
-      if (t) t.style.marginTop = '14px';
+  // Builds every gated toggle into the settings slot for the configured position,
+  // then (at 'bottom') sets the title and applies the collapse behaviour. Runs once.
+  function renderSettings() {
+    const atPlayer = PLAYER_SETTINGS_CARD_POSITION === 'player';
+    const card = $('player-settings-card');
+    const body = atPlayer ? $('settings-slot-player') : $('settings-slot-bottom');
+    if (atPlayer && card) card.style.display = 'none';   // toggles live in the player card instead
+    if (!body) return;
+    body.innerHTML = '';
+
+    const items = SETTINGS.filter(s => !s.gate || s.gate());
+    items.forEach((s, i) => {
+      if (i > 0) {
+        const hr = document.createElement('hr');
+        hr.className = 'toggle-divider';
+        body.appendChild(hr);
+      }
+      if (s.name) {
+        const nameEl = document.createElement('div');
+        nameEl.className = 'setting-name';
+        nameEl.id = `${s.key}-name`;
+        nameEl.textContent = s.name();
+        body.appendChild(nameEl);
+      }
+      const toggle = document.createElement('div');
+      toggle.className = 'mode-toggle';
+      toggle.id = `${s.key}-toggle`;
+      const btnA = document.createElement('button');
+      const btnB = document.createElement('button');
+      btnA.id = `${s.key}-a`;
+      btnB.id = `${s.key}-b`;
+      btnA.addEventListener('click', () => s.set(s.a.value));
+      btnB.addEventListener('click', () => s.set(s.b.value));
+      toggle.appendChild(btnA);
+      toggle.appendChild(btnB);
+      body.appendChild(toggle);
+      const hint = document.createElement('div');
+      hint.className = 'mode-hint';
+      hint.id = `${s.key}-hint`;
+      body.appendChild(hint);
+      syncSetting(s);
+    });
+
+    if (!atPlayer && card) {
+      const title = $('player-settings-title');
+      if (title) title.textContent = UI.PLAYER_SETTINGS_TITLE;
+      // Collapse behaviour (config.js PLAYER_SETTINGS_EXPANDABLE). When off, the
+      // card just stays open — the title shows either way. Only meaningful here.
+      if (PLAYER_SETTINGS_EXPANDABLE) {
+        expandableCard('player-settings-card', 'var(--primary)', 'var(--muted)', false);
+      }
     }
-    const wlTmpl = $('wakelock-toggle-template');
-    if (wlTmpl && slot && wakeLockSupported) {
-      slot.appendChild(wlTmpl.content.cloneNode(true));
-      syncWakeLockUI();
-    }
-    const apTmpl = $('autoplay-toggle-template');
-    if (apTmpl && slot) {
-      slot.appendChild(apTmpl.content.cloneNode(true));
-      syncAutoplayUI();
-    }
-    // Only offered when the master flag is on AND the platform actually has a
-    // media session to attach the rewind action to.
-    const rwTmpl = $('rewind-toggle-template');
-    if (rwTmpl && slot && RESTART_BUTTON_IN_MEDIA_CONTROLS && ('mediaSession' in navigator)) {
-      slot.appendChild(rwTmpl.content.cloneNode(true));
-      syncMediaRewindUI();
-    }
+  }
+
+  // Refreshes one toggle's UI (active button + labels + hint) from live state.
+  function syncSetting(s) {
+    const btnA = $(`${s.key}-a`);
+    const btnB = $(`${s.key}-b`);
+    if (!btnA || !btnB) return;
+    const aActive = s.get() === s.a.value;
+    btnA.textContent = s.a.label();
+    btnB.textContent = s.b.label();
+    btnA.classList.toggle('active',  aActive);
+    btnB.classList.toggle('active', !aActive);
+    const hint = $(`${s.key}-hint`);
+    if (hint) hint.textContent = (aActive ? s.a.hint() : s.b.hint());
+  }
+
+  // Called by the setters below after they mutate state (no-op if that toggle
+  // isn't currently rendered, e.g. gated out).
+  function syncSettingByKey(key) {
+    const s = SETTINGS.find(x => x.key === key);
+    if (s) syncSetting(s);
   }
 
   function setMode(mode) {
     if (mode !== 'blob' && mode !== 'stream') return;
     activeMode = mode;
     localStorage.setItem('ap_mode', mode);
-    syncModeUI();
-  }
-
-  function syncModeUI() {
-    const toggle     = $('mode-toggle');
-    const hint       = $('mode-hint');
-    const bottomCard = $('mode-card-bottom');
-    if (!toggle) return;
-    if (activeMode === 'hybrid') {
-      toggle.style.display = 'none';
-      if (hint) hint.textContent = '';
-      if (MODE_TOGGLE_POSITION === 'bottom' && bottomCard) bottomCard.style.display = 'none';
-      return;
-    }
-    toggle.style.display = 'flex';
-    $('mode-blob').classList.toggle('active', activeMode === 'blob');
-    $('mode-stream').classList.toggle('active', activeMode === 'stream');
-    $('mode-blob').textContent   = UI.MODE_BLOB_LABEL;
-    $('mode-stream').textContent = UI.MODE_STREAM_LABEL;
-    if (hint) hint.textContent = activeMode === 'blob' ? UI.MODE_BLOB_HINT : UI.MODE_STREAM_HINT;
+    syncSettingByKey('mode');
   }
 
   async function acquireWakeLock() {
@@ -1094,54 +1135,21 @@
   function setWakeLock(on) {
     wakeLockEnabled = on;
     localStorage.setItem('ap_wakelock', on ? '1' : '0');
-    syncWakeLockUI();
+    syncSettingByKey('wakelock');
     if (on) acquireWakeLock(); else releaseWakeLock();
-  }
-
-  function syncWakeLockUI() {
-    const toggle = $('wakelock-toggle');
-    const hint   = $('wakelock-hint');
-    if (!toggle) return;
-    $('wakelock-off').classList.toggle('active', !wakeLockEnabled);
-    $('wakelock-on').classList.toggle('active',   wakeLockEnabled);
-    $('wakelock-off').textContent = UI.WAKELOCK_OFF_LABEL;
-    $('wakelock-on').textContent  = UI.WAKELOCK_ON_LABEL;
-    if (hint) hint.textContent = wakeLockEnabled ? UI.WAKELOCK_HINT_ON : UI.WAKELOCK_HINT_OFF;
   }
 
   function setAutoplay(on) {
     autoplayOnTap = on;
     localStorage.setItem('ap_autoplay', on ? '1' : '0');
-    syncAutoplayUI();
-  }
-
-  function syncAutoplayUI() {
-    const toggle = $('autoplay-toggle');
-    const hint   = $('autoplay-hint');
-    if (!toggle) return;
-    $('autoplay-off').classList.toggle('active', !autoplayOnTap);
-    $('autoplay-on').classList.toggle('active',   autoplayOnTap);
-    $('autoplay-off').textContent = UI.AUTOPLAY_OFF_LABEL;
-    $('autoplay-on').textContent  = UI.AUTOPLAY_ON_LABEL;
-    if (hint) hint.textContent = autoplayOnTap ? UI.AUTOPLAY_HINT_ON : UI.AUTOPLAY_HINT_OFF;
+    syncSettingByKey('autoplay');
   }
 
   function setMediaRewind(on) {
     mediaRewindEnabled = on;
     localStorage.setItem('ap_media_rewind', on ? '1' : '0');
-    syncMediaRewindUI();
+    syncSettingByKey('rewind');
     MediaControls.setRewindEnabled(on);   // register/unregister the ⏮ handler live
-  }
-
-  function syncMediaRewindUI() {
-    const toggle = $('rewind-toggle');
-    const hint   = $('rewind-hint');
-    if (!toggle) return;
-    $('rewind-off').classList.toggle('active', !mediaRewindEnabled);
-    $('rewind-on').classList.toggle('active',   mediaRewindEnabled);
-    $('rewind-off').textContent = UI.REWIND_OFF_LABEL;
-    $('rewind-on').textContent  = UI.REWIND_ON_LABEL;
-    if (hint) hint.textContent = mediaRewindEnabled ? UI.REWIND_HINT_ON : UI.REWIND_HINT_OFF;
   }
 
   let loadingDelayTimer = null;
