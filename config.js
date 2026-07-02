@@ -53,10 +53,12 @@ const RESTART_BUTTON_IN_PLAYER = true;
 // RESTART_BUTTON_IN_PLAYER. The per-user show/hide default is MEDIA_REWIND_DEFAULT.
 const RESTART_BUTTON_IN_MEDIA_CONTROLS = true;
 
-// player.html — first-run default for the per-user "Show/Hide Rewind" toggle
-// (persisted in localStorage ap_media_rewind once they choose). Only has any
-// effect while RESTART_BUTTON_IN_MEDIA_CONTROLS above is true.
-const MEDIA_REWIND_DEFAULT = true;
+// player.html — first-run default for the per-user rewind Show/Hide toggle
+// (persisted in localStorage ap_media_rewind once they choose). false = the
+// rewind button is hidden by default (toggle shows "Hide/Disable Button" on the
+// left as the active default). Only has any effect while
+// RESTART_BUTTON_IN_MEDIA_CONTROLS above is true.
+const MEDIA_REWIND_DEFAULT = false;
 
 // player.html — default artwork shown on the OS lock-screen / notification
 // media card (navigator.mediaSession metadata). One place to manage the

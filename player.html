@@ -199,8 +199,8 @@
     AUTOPLAY_OFF_LABEL: 'Press Play to start',
     AUTOPLAY_HINT_ON:   'After being chosen, the track starts playing.',
     AUTOPLAY_HINT_OFF:  'The track gets ready and waits for play to be pressed (even from media controls).',
-    REWIND_ON_LABEL:    'Show Button',
-    REWIND_OFF_LABEL:   'Hide Button',
+    REWIND_ON_LABEL:    'Show/Enable Button',
+    REWIND_OFF_LABEL:   'Hide/Disable Button',
     REWIND_HINT_ON:     'Adds a restart button (⏮) in the media controls.',
     REWIND_HINT_OFF:    'Hides the Restart button.',
   };
@@ -237,6 +237,17 @@
   const wakeLockSupported = 'wakeLock' in navigator;
   let wakeLockEnabled = localStorage.getItem('ap_wakelock') === '1';
   let wakeLockSentinel = null;
+
+  // Device type — computed once at load, available anywhere as DEVICE.{ios,android,type}.
+  // Also mirrored to localStorage.ap_device so it can be inspected/reused anytime.
+  // (iPadOS 13+ reports as desktop Safari, so also treat MacIntel-with-touch as iOS.)
+  const DEVICE = (() => {
+    const ua = navigator.userAgent || '';
+    const ios = /iP(hone|ad|od)/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const android = /Android/.test(ua);
+    return { ios, android, type: ios ? 'ios' : android ? 'android' : 'desktop' };
+  })();
+  try { localStorage.setItem('ap_device', DEVICE.type); } catch (e) {}
 
   // First-ever default comes from config.js; once the participant has used
   // the toggle, their stored choice wins from then on.
@@ -299,18 +310,12 @@
   // intentional intro, not the track's opening.
   const introClip = new Audio('intro-clip.mp3');
   introClip.preload = 'auto';
-  // Warm it up: a cold element's FIRST play doesn't reliably grab audio focus.
-  // Muted autoplay is allowed without a gesture, so prime it silently at load.
-  (function primeIntroClip() {
-    try {
-      introClip.muted = true;
-      introClip.play().then(() => {
-        introClip.pause();
-        introClip.currentTime = 0;
-        introClip.muted = false;
-      }).catch(() => { introClip.muted = false; });
-    } catch (e) { introClip.muted = false; }
-  })();
+  // No load-time warm-up. An earlier session added a "prime it muted at load" step
+  // on the assumption the element's first play wouldn't reliably grab audio focus —
+  // but that was never re-tested. On-device testing (Android) shows the on-tap
+  // activation works fine without it, and on iOS the muted warm-up wasn't actually
+  // silent, so it leaked the clip audibly on every page load. activateMediaSession()
+  // (on a real tap) is now the only thing that plays this element.
 
   document.title                    = UI.PAGE_TITLE;
   $('now-playing').textContent      = UI.NOW_PLAYING_IDLE;
@@ -347,8 +352,8 @@
       b: { value: false, label: () => UI.AUTOPLAY_OFF_LABEL, hint: () => UI.AUTOPLAY_HINT_OFF },
       get: () => autoplayOnTap, set: setAutoplay },
     { key: 'rewind', name: () => UI.SETTING_NAME_REWIND,
-      a: { value: true,  label: () => UI.REWIND_ON_LABEL,  hint: () => UI.REWIND_HINT_ON },
-      b: { value: false, label: () => UI.REWIND_OFF_LABEL, hint: () => UI.REWIND_HINT_OFF },
+      a: { value: false, label: () => UI.REWIND_OFF_LABEL, hint: () => UI.REWIND_HINT_OFF },
+      b: { value: true,  label: () => UI.REWIND_ON_LABEL,  hint: () => UI.REWIND_HINT_ON },
       get: () => mediaRewindEnabled, set: setMediaRewind,
       gate: () => RESTART_BUTTON_IN_MEDIA_CONTROLS && ('mediaSession' in navigator) },
   ];
